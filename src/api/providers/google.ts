@@ -194,7 +194,7 @@ class GoogleProvider implements LLMProvider {
     if (!geminiResponse.candidates || geminiResponse.candidates.length === 0) {
       const keys = Object.keys(geminiResponse as Record<string, unknown>);
       throw new LLMError(
-        `No candidates in Gemini response. Response keys: [${keys.join(', ')}]${geminiResponse.error ? `. Error: ${geminiResponse.error.message}` : ''}`,
+        `No candidates in Gemini response. Response keys: [${keys.join(', ')}]`,
         LLMErrorCode.INVALID_REQUEST
       );
     }

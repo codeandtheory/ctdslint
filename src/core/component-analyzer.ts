@@ -4,7 +4,7 @@ import { ComponentContext, LayerHierarchy, ComponentMetadata, EnhancedAnalysisRe
 import { extractTextContent, getAllChildNodes } from '../utils/figma-helpers';
 import { extractDesignTokensFromNode } from './token-analyzer';
 import { validateCollectionStructure, validateTextStylesAgainstVariables, validateTextStyleBindings, validateAllComponentBindings } from './collection-validator';
-import { extractJSONFromResponse, createEnhancedMetadataPrompt, filterDevelopmentRecommendations, createMCPEnhancedAnalysis } from '../api/claude';
+import { extractJSONFromResponse, createEnhancedMetadataPrompt, filterDevelopmentRecommendations } from '../api/claude';
 import { callProvider, ProviderId } from '../api/providers';
 import { analyzeNamingIssues } from '../fixes/naming-fixer';
 
@@ -1325,6 +1325,103 @@ async function extractActualComponentStates(node: SceneNode): Promise<string[]> 
 }
 
 /**
+ * Run deterministic-only analysis (no AI / API key required).
+ * Extracts properties, states, tokens, audit checks, naming issues, and
+ * generates a basic metadata object — everything that comes from the Figma
+ * API and rule-based logic.  Returns the same EnhancedAnalysisResult shape
+ * so the UI can render immediately.
+ */
+export async function runDeterministicAnalysis(
+  node: SceneNode,
+  context: ComponentContext,
+  options: EnhancedAnalysisOptions = {}
+): Promise<EnhancedAnalysisResult> {
+  console.log('🔍 Running deterministic analysis (no AI)...');
+
+  // --- Figma API extraction (all deterministic) ---
+  const selectedNode = figma.currentPage.selection[0] || node;
+  const actualProperties = await extractActualComponentProperties(node, selectedNode);
+  const actualStates = await extractActualComponentStates(node);
+
+  let tokens: TokenAnalysis = {
+    colors: [], spacing: [], typography: [], effects: [], borders: [],
+    summary: { totalTokens: 0, actualTokens: 0, hardCodedValues: 0, aiSuggestions: 0, byCategory: {} }
+  };
+  if (options.includeTokenAnalysis !== false) {
+    tokens = await extractDesignTokensFromNode(node);
+  }
+
+  // Extract component description
+  let componentDescription = '';
+  if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
+    componentDescription = (node as ComponentNode | ComponentSetNode).description || '';
+  } else if (node.type === 'INSTANCE') {
+    const instance = node as InstanceNode;
+    const mainComponent = await instance.getMainComponentAsync();
+    if (mainComponent) {
+      componentDescription = mainComponent.description || '';
+    }
+  }
+
+  // --- Rule-based audit (all deterministic) ---
+  const audit = await createAuditResults({}, context, node, actualProperties, actualStates, tokens, componentDescription);
+
+  // --- Naming issues (deterministic) ---
+  const namingIssues = analyzeNamingIssues(node, 5);
+
+  // --- Fallback MCP readiness (deterministic scoring) ---
+  const mcpReadiness = generateFallbackMCPReadiness({
+    node, context, actualProperties, actualStates, tokens, componentDescription
+  });
+
+  // --- Build metadata (basic, no AI description) ---
+  const metadata: ComponentMetadata = {
+    component: context.name || 'Component',
+    description: componentDescription || `A ${context.type.toLowerCase()} component with ${actualProperties.length} properties`,
+    props: actualProperties.map(p => ({
+      name: p.name,
+      type: 'variant' as const,
+      description: `Controls ${p.name}`,
+      defaultValue: p.default,
+      required: false
+    })),
+    propertyCheatSheet: actualProperties.map(p => ({
+      name: p.name,
+      values: p.values,
+      default: p.default,
+      description: `Property for ${p.name} configuration`
+    })),
+    states: actualStates.length > 0 ? actualStates : ['default'],
+    slots: context.detectedSlots || [],
+    variants: {},
+    usage: '',
+    accessibility: {},
+    tokens: {
+      colors: tokens.colors.filter((t: DesignToken) => t.isActualToken).map((t: DesignToken) => t.name),
+      spacing: tokens.spacing.filter((t: DesignToken) => t.isActualToken).map((t: DesignToken) => t.name),
+      typography: tokens.typography.filter((t: DesignToken) => t.isActualToken).map((t: DesignToken) => t.name)
+    },
+    audit: {
+      accessibilityIssues: [],
+      tokenOpportunities: []
+    },
+    mcpReadiness
+  };
+
+  console.log(`✅ Deterministic analysis complete: ${actualProperties.length} props, ${actualStates.length} states, ${namingIssues.length} naming issues`);
+
+  return {
+    metadata,
+    tokens,
+    audit,
+    properties: actualProperties,
+    recommendations: [],          // AI-only — always empty in deterministic path
+    namingIssues,
+    existingDescription: componentDescription
+  };
+}
+
+/**
  * Process enhanced analysis with improved MCP integration
  * Now leverages the upgraded MCP server processing capabilities
  */
@@ -1744,7 +1841,7 @@ function generateMCPReadinessFromBestPractices(
  */
 function generatePropertyCheatSheet(
   properties: Array<{ name: string; values: string[]; default: string }>,
-  componentName: string
+  _componentName: string
 ): string[] {
   const cheatSheet: string[] = [];
 
@@ -1960,12 +2057,12 @@ export async function processAnalysisResult(
  * Create audit results from Claude analysis data
  */
 async function createAuditResults(
-  filteredData: any,
-  context: ComponentContext,
+  _filteredData: any,
+  _context: ComponentContext,
   node: SceneNode,
   actualProperties: Array<{ name: string; values: string[]; default: string }>,
   actualStates: string[],
-  tokens: TokenAnalysis,
+  _tokens: TokenAnalysis,
   componentDescription?: string
 ): Promise<DetailedAuditResults> {
   // Check parent component set description for context-aware description check
@@ -2539,71 +2636,6 @@ function generateImplementationNotes(
   }
   
   return notes.join('. ') + '.';
-}
-
-/**
- * Enhance MCP readiness data from Claude with fallback content
- */
-function enhanceMCPReadinessWithFallback(mcpData: any, data: {
-  node: SceneNode;
-  context: any;
-  actualProperties: Array<{ name: string; values: string[]; default: string }>;
-  actualStates: string[];
-  tokens: any;
-}): any {
-  const score = parseInt(mcpData.score) || 0;
-  let strengths = Array.isArray(mcpData.strengths) ? mcpData.strengths.filter((s: any) =>
-    typeof s === 'string' && s.trim() && !s.includes('REQUIRED') && !s.includes('Examples')
-  ) : [];
-  let gaps = Array.isArray(mcpData.gaps) ? mcpData.gaps.filter((g: any) =>
-    typeof g === 'string' && g.trim() && !g.includes('REQUIRED') && !g.includes('Examples')
-  ) : [];
-  let recommendations = Array.isArray(mcpData.recommendations) ? mcpData.recommendations.filter((r: any) =>
-    typeof r === 'string' && r.trim() && !r.includes('REQUIRED') && !r.includes('Examples')
-  ) : [];
-
-  // Generate fallback content if Claude didn't provide enough
-  if (strengths.length === 0 || gaps.length === 0 || recommendations.length === 0) {
-    console.log('🔄 Enhancing MCP readiness with fallback content...');
-    const fallback = generateFallbackMCPReadiness(data);
-
-    if (strengths.length === 0) {
-      strengths = fallback.strengths;
-    }
-    if (gaps.length === 0) {
-      gaps = fallback.gaps;
-    }
-    if (recommendations.length === 0) {
-      recommendations = fallback.recommendations;
-    }
-  }
-
-  return {
-    score,
-    strengths,
-    gaps: deduplicateRecommendations(gaps), // Apply same deduplication to gaps
-    recommendations: deduplicateRecommendations(recommendations),
-    implementationNotes: mcpData.implementationNotes ||
-      generateImplementationNotes(
-        data.context.additionalContext?.componentFamily || 'generic',
-        mcpData.strengths || [],
-        mcpData.gaps || [],
-        data.actualProperties,
-        data.actualStates,
-        {
-          colors: data.tokens?.colors?.filter((t: any) => t.isActualToken)?.length || 0,
-          spacing: data.tokens?.spacing?.filter((t: any) => t.isActualToken)?.length || 0,
-          typography: data.tokens?.typography?.filter((t: any) => t.isActualToken)?.length || 0,
-          hardCoded: [
-            ...(data.tokens?.colors?.filter((t: any) => !t.isActualToken && !t.isDefaultVariantStyle) || []),
-            ...(data.tokens?.spacing?.filter((t: any) => !t.isActualToken && !t.isDefaultVariantStyle) || []),
-            ...(data.tokens?.typography?.filter((t: any) => !t.isActualToken && !t.isDefaultVariantStyle) || []),
-            ...(data.tokens?.effects?.filter((t: any) => !t.isActualToken && !t.isDefaultVariantStyle) || []),
-            ...(data.tokens?.borders?.filter((t: any) => !t.isActualToken && !t.isDefaultVariantStyle) || [])
-          ].length
-        }
-      )
-  };
 }
 
 /**

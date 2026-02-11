@@ -317,7 +317,7 @@ export async function validateCollectionStructure(
           
           // Pattern validation issues
           if (subResult.patternValidation) {
-            const { allMatch, invalidNames, patternDescription, examples } = subResult.patternValidation;
+            const { patternDescription, examples } = subResult.patternValidation;
             if (subResult.found.length === 0) {
               // No valid sub-categories at all - this is a real problem
               auditChecks.push({
@@ -800,16 +800,6 @@ const TYPOGRAPHY_PROPERTIES = [
 
 type TypographyProperty = typeof TYPOGRAPHY_PROPERTIES[number];
 
-/**
- * Maps Figma text style bound variable keys to our property names
- */
-const FIGMA_BOUND_VAR_KEYS: Record<string, TypographyProperty> = {
-  'fontFamily': 'fontFamily',
-  'fontSize': 'fontSize',
-  'fontWeight': 'fontWeight',
-  'letterSpacing': 'letterSpacing',
-  'lineHeight': 'lineHeight'
-};
 
 /**
  * Result of validating a single text style's variable bindings

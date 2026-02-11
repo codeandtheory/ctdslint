@@ -1,6 +1,6 @@
 /// <reference types="@figma/plugin-typings" />
 
-import { ComponentContext, ComponentMetadata, EnhancedAnalysisResult, DesignToken } from '../types';
+import { ComponentContext, EnhancedAnalysisResult, DesignToken } from '../types';
 import { ComponentAnalysisCache, DesignSystemsKnowledge, ConsistencyConfig } from './types/consistency';
 
 /**
@@ -430,7 +430,7 @@ ${scoringCriteria}
     return guidance || this.getFallbackGuidance(context);
   }
 
-  private getScoringCriteria(context: ComponentContext): string {
+  private getScoringCriteria(_context: ComponentContext): string {
     if (!this.designSystemsKnowledge?.scoring) {
       return this.getFallbackScoringCriteria();
     }
@@ -653,7 +653,7 @@ ${scoringCriteria}
     return corrected;
   }
 
-  private ensureConsistentScoring(mcpReadiness: any, context: ComponentContext): any {
+  private ensureConsistentScoring(mcpReadiness: any, _context: ComponentContext): any {
     // Return the actual calculated score without arbitrary baselines
     return {
       ...mcpReadiness,

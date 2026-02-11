@@ -183,6 +183,7 @@ export interface PluginState {
 export type UIMessageType =
   | 'check-api-key'
   | 'save-api-key'
+  | 'test-api-key'
   | 'update-model'
   | 'analyze'
   | 'analyze-enhanced'
@@ -259,6 +260,23 @@ export interface EnhancedAnalysisResult {
   recommendations?: Array<{ name: string; type: string; description: string; examples: string[] }>;
   namingIssues?: NamingIssue[];
   existingDescription?: string;
+  /** Whether AI enhancement is still in-flight (true) or was skipped (false/undefined) */
+  aiPending?: boolean;
+}
+
+/**
+ * Payload sent from plugin to UI when AI analysis completes asynchronously
+ * after the initial deterministic results have already been displayed.
+ */
+export interface AIEnhancementResult {
+  /** AI-generated component description (replaces basic description) */
+  description?: string;
+  /** AI-recommended properties the component should have */
+  recommendations?: Array<{ name: string; type: string; description: string; examples: string[] }>;
+  /** AI-generated MCP readiness scoring */
+  mcpReadiness?: MCPReadiness;
+  /** Full AI metadata for Developer Handoff enrichment */
+  metadata?: Partial<ComponentMetadata>;
 }
 
 // Re-export NamingIssue shape for use in UI messages

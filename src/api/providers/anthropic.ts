@@ -240,14 +240,14 @@ export class AnthropicProvider implements LLMProvider {
 
       case 401:
         return new LLMError(
-          'Claude API Error (401): Invalid API key. Please check your Claude API key in settings.',
+          `Claude API Error (401): ${errorMessage}. Please check your Claude API key in settings.`,
           LLMErrorCode.INVALID_API_KEY,
           401
         );
 
       case 403:
         return new LLMError(
-          'Claude API Error (403): Access forbidden. Please check your API key permissions.',
+          `Claude API Error (403): ${errorMessage}. Please check your API key permissions.`,
           LLMErrorCode.INVALID_API_KEY,
           403
         );

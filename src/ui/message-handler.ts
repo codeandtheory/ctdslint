@@ -1,11 +1,11 @@
 /// <reference types="@figma/plugin-typings" />
 
-import { PluginMessage, UIMessageType, EnhancedAnalysisOptions, ChatMessage, ChatResponse } from '../types';
+import { PluginMessage, UIMessageType, EnhancedAnalysisOptions, ChatMessage, ChatResponse, AuditCheck } from '../types';
 import { sendMessageToUI, isValidNodeForAnalysis } from '../utils/figma-helpers';
-import { processEnhancedAnalysis, processAnalysisResult, extractComponentContext } from '../core/component-analyzer';
+import { processEnhancedAnalysis, processAnalysisResult, extractComponentContext, runDeterministicAnalysis } from '../core/component-analyzer';
 import { extractDesignTokensFromNode } from '../core/token-analyzer';
 import { validateCollectionStructure, validateTextStylesAgainstVariables, validateTextStyleBindings, validateAllComponentBindings } from '../core/collection-validator';
-import { extractJSONFromResponse, createEnhancedMetadataPrompt, filterDevelopmentRecommendations } from '../api/claude';
+import { extractJSONFromResponse, filterDevelopmentRecommendations } from '../api/claude';
 import ComponentConsistencyEngine from '../core/consistency-engine';
 import {
   ProviderId,
@@ -14,8 +14,6 @@ import {
   loadProviderConfig,
   saveProviderConfig,
   clearProviderKey,
-  STORAGE_KEYS,
-  DEFAULTS,
   migrateLegacyStorage,
 } from '../api/providers';
 import {
@@ -23,20 +21,14 @@ import {
   applyColorFix,
   applySpacingFix,
   findMatchingColorVariable,
-  findMatchingSpacingVariable,
   findBestMatchingVariable,
-  suggestSemanticTokenName,
   FixPreview,
   FixResult,
 } from '../fixes/token-fixer';
 import {
   previewRename,
   renameLayer,
-  batchRename,
   suggestLayerName,
-  analyzeNamingIssues,
-  getNamingIssueSummary,
-  NamingStrategy,
   RenamePreview,
 } from '../fixes/naming-fixer';
 import { FixRequest, FixPreviewRequest, BatchFixRequest } from '../types';
@@ -60,6 +52,12 @@ function isValidApiKeyFormat(apiKey: string, provider: ProviderId = selectedProv
     default:
       return false;
   }
+}
+
+// Sanitize API key by removing invisible/non-printable characters
+function sanitizeApiKey(key: string): string {
+  // Remove all non-printable / invisible characters, keeping only visible ASCII
+  return key.replace(/[^\x20-\x7E]/g, '').trim();
 }
 
 // Plugin-level state for storing last analyzed component
@@ -95,6 +93,9 @@ export async function handleUIMessage(msg: PluginMessage): Promise<void> {
         break;
       case 'save-api-key':
         await handleSaveApiKey(data.apiKey, data.model, data.provider);
+        break;
+      case 'test-api-key':
+        await handleTestApiKey(data.apiKey, data.model, data.provider);
         break;
       case 'update-model':
         await handleUpdateModel(data.model);
@@ -172,9 +173,10 @@ async function handleCheckApiKey(): Promise<void> {
       return;
     }
 
-    // Check persistent storage for current provider
-    if (config.apiKey && isValidApiKeyFormat(config.apiKey, config.providerId)) {
-      storedApiKey = config.apiKey;
+    // Check persistent storage for current provider (sanitize in case of stored invisible chars)
+    const sanitizedKey = config.apiKey ? sanitizeApiKey(config.apiKey) : null;
+    if (sanitizedKey && isValidApiKeyFormat(sanitizedKey, config.providerId)) {
+      storedApiKey = sanitizedKey;
       sendMessageToUI('api-key-status', {
         hasKey: true,
         provider: selectedProvider,
@@ -198,6 +200,9 @@ async function handleCheckApiKey(): Promise<void> {
  */
 async function handleSaveApiKey(apiKey: string, model?: string, provider?: string): Promise<void> {
   try {
+    // Sanitize key to remove invisible/non-printable characters from copy-paste
+    apiKey = sanitizeApiKey(apiKey);
+
     // Update provider if specified
     const providerId = (provider as ProviderId) || selectedProvider;
 
@@ -228,6 +233,109 @@ async function handleSaveApiKey(apiKey: string, model?: string, provider?: strin
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     sendMessageToUI('api-key-saved', { success: false, error: errorMessage });
     figma.notify(`Failed to save API key: ${errorMessage}`, { error: true });
+  }
+}
+
+/**
+ * Test API key without saving — validates format then makes a minimal API call
+ */
+async function handleTestApiKey(apiKey: string, model?: string, provider?: string): Promise<void> {
+  try {
+    console.log('Testing API key...');
+
+    // Sanitize key to remove invisible/non-printable characters from copy-paste
+    apiKey = sanitizeApiKey(apiKey);
+
+    const testProvider = (provider as ProviderId) || selectedProvider;
+    const testModel = model || selectedModel;
+
+    // Validate API key format
+    if (!isValidApiKeyFormat(apiKey, testProvider)) {
+      const expectedFormat = getExpectedKeyFormat(testProvider);
+      sendMessageToUI('test-api-key-result', {
+        success: false,
+        error: `Invalid API key format. Expected format: ${expectedFormat}`,
+        details: `Provider: ${testProvider}\nModel: ${testModel}\nExpected format: ${expectedFormat}`
+      });
+      return;
+    }
+
+    // DEBUG: Log key format check
+    console.log('Key format check:', {
+      length: apiKey.length,
+      prefix: apiKey.substring(0, 7),
+      trimmedLength: apiKey.trim().length,
+      suffix: apiKey.substring(apiKey.length - 4)
+    });
+
+    // Test the API key with a minimal request
+    const testPrompt = 'Reply with just the word "success" and nothing else.';
+    const response = await callProvider(testProvider, apiKey, {
+      prompt: testPrompt,
+      model: testModel,
+      maxTokens: 10,
+      temperature: 0,
+    });
+
+    if (response && response.content && response.content.trim().length > 0) {
+      const providerName = getProviderDisplayName(testProvider);
+      figma.notify(`${providerName} API key is valid`, { timeout: 2000 });
+      sendMessageToUI('test-api-key-result', {
+        success: true,
+        provider: testProvider,
+        model: testModel
+      });
+    } else {
+      throw new Error('Empty response from API');
+    }
+  } catch (error: any) {
+    console.error('API key test failed:', error);
+
+    const errorDetails = [
+      `Error: ${error.message || 'Unknown error'}`,
+      error.code ? `Code: ${error.code}` : '',
+      error.status ? `Status: ${error.status}` : '',
+      `Provider: ${provider || selectedProvider}`,
+      `Model: ${model || selectedModel}`
+    ].filter(Boolean).join('\n');
+
+    sendMessageToUI('test-api-key-result', {
+      success: false,
+      error: error.message || 'API key validation failed',
+      details: errorDetails
+    });
+  }
+}
+
+/**
+ * Get expected key format for a provider
+ */
+function getExpectedKeyFormat(provider: string): string {
+  switch (provider) {
+    case 'anthropic':
+      return 'sk-ant-...';
+    case 'openai':
+      return 'sk-...';
+    case 'google':
+      return 'AIza...';
+    default:
+      return 'Valid API key';
+  }
+}
+
+/**
+ * Get display name for a provider
+ */
+function getProviderDisplayName(provider: string): string {
+  switch (provider) {
+    case 'anthropic':
+      return 'Claude';
+    case 'openai':
+      return 'OpenAI';
+    case 'google':
+      return 'Gemini';
+    default:
+      return provider;
   }
 }
 
@@ -344,152 +452,192 @@ async function handleSystemAudit(): Promise<void> {
 }
 
 /**
- * Enhanced component analysis with consistency engine
+ * Resolve the selected node to the best analyzable target (handles instances,
+ * variants, parent traversal, etc.).  Pure navigation logic — no analysis.
+ */
+async function resolveAnalyzableNode(selection: readonly SceneNode[]): Promise<SceneNode> {
+  let selectedNode = selection[0];
+
+  // Handle instances
+  if (selectedNode.type === 'INSTANCE') {
+    const instance = selectedNode as InstanceNode;
+    try {
+      const mainComponent = await instance.getMainComponentAsync();
+      if (mainComponent) {
+        figma.notify('Analyzing main component instead of instance...', { timeout: 2000 });
+        selectedNode = mainComponent;
+      } else {
+        throw new Error('This instance has no main component. Please select a component directly.');
+      }
+    } catch (error) {
+      console.error('Error accessing main component:', error);
+      throw new Error('Could not access main component. Please select a component directly.');
+    }
+  }
+
+  // Handle component variants - if user selected a variant, analyze the parent component set
+  if (selectedNode.type === 'COMPONENT' && selectedNode.parent?.type === 'COMPONENT_SET') {
+    const parentComponentSet = selectedNode.parent as ComponentSetNode;
+    figma.notify('Analyzing parent component set to include all variants...', { timeout: 2000 });
+    selectedNode = parentComponentSet;
+  }
+
+  // If the selected node isn't directly analyzable, walk up to find an analyzable ancestor.
+  if (!isValidNodeForAnalysis(selectedNode)) {
+    const componentTypes = new Set(['COMPONENT_SET', 'COMPONENT', 'INSTANCE']);
+    let componentAncestor: SceneNode | null = null;
+    let frameAncestor: SceneNode | null = null;
+
+    let ancestor: BaseNode | null = selectedNode.parent;
+    while (ancestor && 'type' in ancestor) {
+      const sceneAncestor = ancestor as SceneNode;
+      if (componentTypes.has(sceneAncestor.type) && !componentAncestor) {
+        componentAncestor = sceneAncestor;
+        break;
+      }
+      if (!frameAncestor && isValidNodeForAnalysis(sceneAncestor)) {
+        frameAncestor = sceneAncestor;
+      }
+      ancestor = ancestor.parent;
+    }
+
+    const bestAncestor = componentAncestor || frameAncestor;
+    if (bestAncestor) {
+      figma.notify(`Analyzing parent ${bestAncestor.type.toLowerCase()} "${bestAncestor.name}"...`, { timeout: 2000 });
+      selectedNode = bestAncestor;
+    }
+  }
+
+  // Handle instances found via parent traversal
+  if (selectedNode.type === 'INSTANCE') {
+    const instance = selectedNode as InstanceNode;
+    try {
+      const mainComponent = await instance.getMainComponentAsync();
+      if (mainComponent) {
+        figma.notify('Analyzing main component instead of instance...', { timeout: 2000 });
+        selectedNode = mainComponent;
+      }
+    } catch {
+      // Fall through to validation below
+    }
+  }
+
+  // Handle component variants found via parent traversal
+  if (selectedNode.type === 'COMPONENT' && selectedNode.parent?.type === 'COMPONENT_SET') {
+    const parentComponentSet = selectedNode.parent as ComponentSetNode;
+    figma.notify('Analyzing parent component set to include all variants...', { timeout: 2000 });
+    selectedNode = parentComponentSet;
+  }
+
+  // Final validation
+  if (!isValidNodeForAnalysis(selectedNode)) {
+    throw new Error('Please select a Frame, Component, Component Set, or Instance to analyze');
+  }
+
+  return selectedNode;
+}
+
+/**
+ * Enhanced component analysis with consistency engine.
+ *
+ * Phase 1 (always): Run deterministic analysis from Figma API data and send
+ *   results immediately so the UI populates without delay.
+ * Phase 2 (if API key): Fire off AI-powered analysis and send a follow-up
+ *   'ai-enhancement-result' message to enrich the UI.
  */
 async function handleEnhancedAnalyze(options: EnhancedAnalysisOptions): Promise<void> {
   try {
-    // Check API key
-    if (!storedApiKey) {
-      const providerName = getProvider(selectedProvider).name;
-      throw new Error(`API key not found. Please save your ${providerName} API key first.`);
-    }
-
     // Get selection
     const selection = figma.currentPage.selection;
     if (selection.length === 0) {
       throw new Error('No component selected. Please select a Figma component to analyze.');
     }
 
-    // Handle batch mode
+    // Handle batch mode (still requires API key — unchanged)
     if (options.batchMode && selection.length > 1) {
       await handleBatchAnalysis(selection, options);
       return;
     }
 
-    // Single component analysis
-    let selectedNode = selection[0];
-    const originalSelectedNode = selectedNode; // Keep track of the original selection
+    // Resolve to the best analyzable node
+    const selectedNode = await resolveAnalyzableNode(selection);
 
-    // Handle instances
-    if (selectedNode.type === 'INSTANCE') {
-      const instance = selectedNode as InstanceNode;
-      try {
-        const mainComponent = await instance.getMainComponentAsync();
-        if (mainComponent) {
-          figma.notify('Analyzing main component instead of instance...', { timeout: 2000 });
-          selectedNode = mainComponent;
-        } else {
-          throw new Error('This instance has no main component. Please select a component directly.');
-        }
-      } catch (error) {
-        console.error('Error accessing main component:', error);
-        throw new Error('Could not access main component. Please select a component directly.');
-      }
-    }
-
-    // Handle component variants - if user selected a variant, analyze the parent component set
-    if (selectedNode.type === 'COMPONENT' && selectedNode.parent?.type === 'COMPONENT_SET') {
-      const component = selectedNode as ComponentNode;
-      const parentComponentSet = component.parent as ComponentSetNode;
-
-      figma.notify('Analyzing parent component set to include all variants...', { timeout: 2000 });
-      selectedNode = parentComponentSet;
-    }
-
-    // If the selected node isn't directly analyzable, walk up to find an analyzable ancestor.
-    // Prefer component-level ancestors (COMPONENT_SET, COMPONENT, INSTANCE) over plain FRAMEs
-    // so that selecting a child layer inside a component bubbles up to the component set.
-    if (!isValidNodeForAnalysis(selectedNode)) {
-      const componentTypes = new Set(['COMPONENT_SET', 'COMPONENT', 'INSTANCE']);
-      let componentAncestor: SceneNode | null = null;
-      let frameAncestor: SceneNode | null = null;
-
-      let ancestor: BaseNode | null = selectedNode.parent;
-      while (ancestor && 'type' in ancestor) {
-        const sceneAncestor = ancestor as SceneNode;
-        if (componentTypes.has(sceneAncestor.type) && !componentAncestor) {
-          componentAncestor = sceneAncestor;
-          break; // Component-level ancestor found, no need to continue
-        }
-        if (!frameAncestor && isValidNodeForAnalysis(sceneAncestor)) {
-          frameAncestor = sceneAncestor; // Track as fallback, keep looking for component
-        }
-        ancestor = ancestor.parent;
-      }
-
-      const bestAncestor = componentAncestor || frameAncestor;
-      if (bestAncestor) {
-        figma.notify(`Analyzing parent ${bestAncestor.type.toLowerCase()} "${bestAncestor.name}"...`, { timeout: 2000 });
-        selectedNode = bestAncestor;
-      }
-    }
-
-    // Handle instances found via parent traversal
-    if (selectedNode.type === 'INSTANCE') {
-      const instance = selectedNode as InstanceNode;
-      try {
-        const mainComponent = await instance.getMainComponentAsync();
-        if (mainComponent) {
-          figma.notify('Analyzing main component instead of instance...', { timeout: 2000 });
-          selectedNode = mainComponent;
-        }
-      } catch {
-        // Fall through to validation below
-      }
-    }
-
-    // Handle component variants found via parent traversal
-    if (selectedNode.type === 'COMPONENT' && selectedNode.parent?.type === 'COMPONENT_SET') {
-      const parentComponentSet = selectedNode.parent as ComponentSetNode;
-      figma.notify('Analyzing parent component set to include all variants...', { timeout: 2000 });
-      selectedNode = parentComponentSet;
-    }
-
-    // Validate node type
-    if (!isValidNodeForAnalysis(selectedNode)) {
-      throw new Error('Please select a Frame, Component, Component Set, or Instance to analyze');
-    }
-
-    // Load design systems knowledge if not already loaded
-    await consistencyEngine.loadDesignSystemsKnowledge();
-
-    // Extract component context
+    // Extract component context (deterministic)
     const componentContext = await extractComponentContext(selectedNode);
 
-    // Set up enhanced analysis options with MCP enabled by default
+    // ── Phase 1: Deterministic analysis (always runs, no API key needed) ──
+    figma.notify('Analyzing component...', { timeout: 2000 });
+
     const enhancedOptions: EnhancedAnalysisOptions = {
-      enableMCPEnhancement: true, // Enable MCP enhancement by default
       batchMode: options.batchMode || false,
-      enableAudit: options.enableAudit !== false, // Enable by default
-      includeTokenAnalysis: options.includeTokenAnalysis !== false, // Enable by default
-      ...options // Override with any user-specified options
+      enableAudit: options.enableAudit !== false,
+      includeTokenAnalysis: options.includeTokenAnalysis !== false,
+      ...options
     };
 
-    // Show loading notification
-    figma.notify('Performing enhanced analysis with design systems knowledge...', { timeout: 3000 });
-
-    // Use the new MCP-enhanced analysis flow
-    const result = await processEnhancedAnalysis(
+    const deterministicResult = await runDeterministicAnalysis(
+      selectedNode,
       componentContext,
-      storedApiKey,
-      selectedModel,
-      enhancedOptions,
-      selectedProvider
+      enhancedOptions
     );
 
     // Store for later use
-    lastAnalyzedMetadata = result.metadata;
+    lastAnalyzedMetadata = deterministicResult.metadata;
     lastAnalyzedNode = selectedNode;
 
-    // Send results to UI, including the analyzed node ID for fix operations
+    // Mark whether AI enhancement is coming
+    const hasApiKey = !!storedApiKey;
+    deterministicResult.aiPending = hasApiKey;
+
+    // Send deterministic results immediately so the UI renders
     sendMessageToUI('enhanced-analysis-result', {
-      ...result,
+      ...deterministicResult,
       analyzedNodeId: selectedNode.id
     });
-    figma.notify('Enhanced analysis complete! Check the results panel.', { timeout: 3000 });
+
+    if (!hasApiKey) {
+      figma.notify('Analysis complete! Configure an API key in Settings to unlock AI insights.', { timeout: 3000 });
+      return;
+    }
+
+    // ── Phase 2: AI-powered enhancement (only when API key is available) ──
+    try {
+      figma.notify('Running AI-enhanced analysis...', { timeout: 3000 });
+
+      await consistencyEngine.loadDesignSystemsKnowledge();
+
+      const aiResult = await processEnhancedAnalysis(
+        componentContext,
+        storedApiKey!,
+        selectedModel,
+        { ...enhancedOptions, enableMCPEnhancement: true },
+        selectedProvider
+      );
+
+      // Store enriched metadata
+      lastAnalyzedMetadata = aiResult.metadata;
+
+      // Send AI enhancement as a follow-up message
+      sendMessageToUI('ai-enhancement-result', {
+        description: aiResult.metadata?.description,
+        recommendations: aiResult.recommendations,
+        mcpReadiness: aiResult.metadata?.mcpReadiness,
+        metadata: aiResult.metadata
+      });
+
+      figma.notify('AI-enhanced analysis complete!', { timeout: 2000 });
+    } catch (aiError) {
+      console.error('AI enhancement failed (deterministic results still shown):', aiError);
+      const aiErrorMsg = aiError instanceof Error ? aiError.message : 'Unknown AI error';
+      // Send a non-blocking notification — deterministic results are already displayed
+      sendMessageToUI('ai-enhancement-result', {
+        error: aiErrorMsg
+      });
+      figma.notify(`AI enhancement failed: ${aiErrorMsg}. Deterministic results are shown.`, { error: true, timeout: 4000 });
+    }
 
   } catch (error) {
-    console.error('Error during enhanced analysis:', error);
+    console.error('Error during analysis:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     figma.notify(`Analysis failed: ${errorMessage}`, { error: true });
     sendMessageToUI('analysis-error', { error: errorMessage });
@@ -613,10 +761,14 @@ async function handleChatMessage(data: { message: string; history: ChatMessage[]
   try {
     console.log('Processing chat message:', data.message);
 
-    // Check API key
+    // Check API key — send friendly error instead of throwing
     if (!storedApiKey) {
       const providerName = getProvider(selectedProvider).name;
-      throw new Error(`API key not found. Please save your ${providerName} API key first.`);
+      sendMessageToUI('chat-error', {
+        error: `Chat requires an API key. Please configure your ${providerName} API key in Settings to start chatting.`,
+        requiresApiKey: true
+      });
+      return;
     }
 
     // Send loading state
@@ -737,7 +889,6 @@ function isNodeOnCurrentPage(node: BaseNode): boolean {
 
     // For component instances and other special cases,
     // check if any page contains this node
-    const allPages = figma.root.children.filter(child => child.type === 'PAGE');
     const currentPage = figma.currentPage;
 
     // If this is a component or component set, it might be in the current page

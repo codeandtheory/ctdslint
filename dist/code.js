@@ -170,7 +170,7 @@
     if (hasAllDefaults) {
       console.log(`\u{1F3AF} [FILTER] Detected default variant frame styles in ${node.name} - filtering out`);
       console.log(`   Type: ${node.type}, Parent: ${(_a = node.parent) == null ? void 0 : _a.type}`);
-      console.log(`   Radius: ${node.cornerRadius}, Weight: ${node.strokeWeight}, Color: ${strokes.length > 0 ? rgbToHex(strokes[0].color.r, strokes[0].color.g, strokes[0].color.b) : "none"}`);
+      console.log(`   Radius: ${String(node.cornerRadius)}, Weight: ${String(node.strokeWeight)}, Color: ${strokes.length > 0 && strokes[0].type === "SOLID" ? rgbToHex(strokes[0].color.r, strokes[0].color.g, strokes[0].color.b) : "none"}`);
       console.log(`   Padding: L=${node.paddingLeft}, R=${node.paddingRight}, T=${node.paddingTop}, B=${node.paddingBottom}`);
     }
     return hasAllDefaults;
@@ -859,7 +859,7 @@
               });
             }
             if (subResult.patternValidation) {
-              const { allMatch, invalidNames, patternDescription, examples } = subResult.patternValidation;
+              const { patternDescription, examples } = subResult.patternValidation;
               if (subResult.found.length === 0) {
                 auditChecks.push({
                   check: `${requirement.displayName} ${subResult.category} naming`,
@@ -1901,7 +1901,6 @@ Focus on creating a comprehensive DESIGN analysis that helps designers build sca
       let escapeNext = false;
       for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
         const line = lines[lineIndex];
-        let shouldIncludeLine = true;
         for (let i = 0; i < line.length; i++) {
           const char = line[i];
           if (escapeNext) {
@@ -2275,13 +2274,13 @@ Focus on creating a comprehensive DESIGN analysis that helps designers build sca
           );
         case 401:
           return new LLMError(
-            "Claude API Error (401): Invalid API key. Please check your Claude API key in settings.",
+            `Claude API Error (401): ${errorMessage}. Please check your Claude API key in settings.`,
             "INVALID_API_KEY" /* INVALID_API_KEY */,
             401
           );
         case 403:
           return new LLMError(
-            "Claude API Error (403): Access forbidden. Please check your API key permissions.",
+            `Claude API Error (403): ${errorMessage}. Please check your API key permissions.`,
             "INVALID_API_KEY" /* INVALID_API_KEY */,
             403
           );
@@ -2642,7 +2641,7 @@ Focus on creating a comprehensive DESIGN analysis that helps designers build sca
       if (!geminiResponse.candidates || geminiResponse.candidates.length === 0) {
         const keys = Object.keys(geminiResponse);
         throw new LLMError(
-          `No candidates in Gemini response. Response keys: [${keys.join(", ")}]${geminiResponse.error ? `. Error: ${geminiResponse.error.message}` : ""}`,
+          `No candidates in Gemini response. Response keys: [${keys.join(", ")}]`,
           "INVALID_REQUEST" /* INVALID_REQUEST */
         );
       }
@@ -4567,6 +4566,86 @@ Focus on creating a comprehensive DESIGN analysis that helps designers build sca
     });
     return uniqueStates;
   }
+  async function runDeterministicAnalysis(node, context, options = {}) {
+    console.log("\u{1F50D} Running deterministic analysis (no AI)...");
+    const selectedNode = figma.currentPage.selection[0] || node;
+    const actualProperties = await extractActualComponentProperties(node, selectedNode);
+    const actualStates = await extractActualComponentStates(node);
+    let tokens = {
+      colors: [],
+      spacing: [],
+      typography: [],
+      effects: [],
+      borders: [],
+      summary: { totalTokens: 0, actualTokens: 0, hardCodedValues: 0, aiSuggestions: 0, byCategory: {} }
+    };
+    if (options.includeTokenAnalysis !== false) {
+      tokens = await extractDesignTokensFromNode(node);
+    }
+    let componentDescription = "";
+    if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
+      componentDescription = node.description || "";
+    } else if (node.type === "INSTANCE") {
+      const instance = node;
+      const mainComponent = await instance.getMainComponentAsync();
+      if (mainComponent) {
+        componentDescription = mainComponent.description || "";
+      }
+    }
+    const audit = await createAuditResults({}, context, node, actualProperties, actualStates, tokens, componentDescription);
+    const namingIssues = analyzeNamingIssues(node, 5);
+    const mcpReadiness = generateFallbackMCPReadiness({
+      node,
+      context,
+      actualProperties,
+      actualStates,
+      tokens,
+      componentDescription
+    });
+    const metadata = {
+      component: context.name || "Component",
+      description: componentDescription || `A ${context.type.toLowerCase()} component with ${actualProperties.length} properties`,
+      props: actualProperties.map((p) => ({
+        name: p.name,
+        type: "variant",
+        description: `Controls ${p.name}`,
+        defaultValue: p.default,
+        required: false
+      })),
+      propertyCheatSheet: actualProperties.map((p) => ({
+        name: p.name,
+        values: p.values,
+        default: p.default,
+        description: `Property for ${p.name} configuration`
+      })),
+      states: actualStates.length > 0 ? actualStates : ["default"],
+      slots: context.detectedSlots || [],
+      variants: {},
+      usage: "",
+      accessibility: {},
+      tokens: {
+        colors: tokens.colors.filter((t) => t.isActualToken).map((t) => t.name),
+        spacing: tokens.spacing.filter((t) => t.isActualToken).map((t) => t.name),
+        typography: tokens.typography.filter((t) => t.isActualToken).map((t) => t.name)
+      },
+      audit: {
+        accessibilityIssues: [],
+        tokenOpportunities: []
+      },
+      mcpReadiness
+    };
+    console.log(`\u2705 Deterministic analysis complete: ${actualProperties.length} props, ${actualStates.length} states, ${namingIssues.length} naming issues`);
+    return {
+      metadata,
+      tokens,
+      audit,
+      properties: actualProperties,
+      recommendations: [],
+      // AI-only — always empty in deterministic path
+      namingIssues,
+      existingDescription: componentDescription
+    };
+  }
   async function processEnhancedAnalysis(context, apiKey, model, options = {}, providerId = "anthropic") {
     console.log("\u{1F3AF} Starting enhanced component analysis...");
     const selectedNode = figma.currentPage.selection[0];
@@ -4862,7 +4941,7 @@ Focus ONLY on what's actually in the Figma component for existing data. Recommen
       // Limit recommendations
     };
   }
-  function generatePropertyCheatSheet(properties, componentName) {
+  function generatePropertyCheatSheet(properties, _componentName) {
     const cheatSheet = [];
     const sizeProps = properties.filter(
       (p) => p.name.toLowerCase().includes("size") || p.values.some((v) => ["small", "medium", "large"].includes(v.toLowerCase()))
@@ -5008,7 +5087,7 @@ Focus ONLY on what's actually in the Figma component for existing data. Recommen
       throw error;
     }
   }
-  async function createAuditResults(filteredData, context, node, actualProperties, actualStates, tokens, componentDescription) {
+  async function createAuditResults(_filteredData, _context, node, actualProperties, actualStates, _tokens, componentDescription) {
     var _a;
     let parentHasDescription = false;
     let parentDescription = "";
@@ -5902,7 +5981,7 @@ ${scoringCriteria}
       const guidance = this.designSystemsKnowledge.components[family] || this.designSystemsKnowledge.components.generic;
       return guidance || this.getFallbackGuidance(context);
     }
-    getScoringCriteria(context) {
+    getScoringCriteria(_context) {
       var _a;
       if (!((_a = this.designSystemsKnowledge) == null ? void 0 : _a.scoring)) {
         return this.getFallbackScoringCriteria();
@@ -6089,7 +6168,7 @@ ${scoringCriteria}
       const corrected = __spreadValues({}, tokens);
       return corrected;
     }
-    ensureConsistentScoring(mcpReadiness, context) {
+    ensureConsistentScoring(mcpReadiness, _context) {
       return __spreadProps(__spreadValues({}, mcpReadiness), {
         score: mcpReadiness.score || 0
       });
@@ -6505,6 +6584,9 @@ ${scoringCriteria}
         return false;
     }
   }
+  function sanitizeApiKey(key) {
+    return key.replace(/[^\x20-\x7E]/g, "").trim();
+  }
   var lastAnalyzedMetadata = null;
   var lastAnalyzedNode = null;
   var lastSystemAuditResults = null;
@@ -6523,6 +6605,9 @@ ${scoringCriteria}
           break;
         case "save-api-key":
           await handleSaveApiKey(data.apiKey, data.model, data.provider);
+          break;
+        case "test-api-key":
+          await handleTestApiKey(data.apiKey, data.model, data.provider);
           break;
         case "update-model":
           await handleUpdateModel(data.model);
@@ -6590,8 +6675,9 @@ ${scoringCriteria}
         });
         return;
       }
-      if (config.apiKey && isValidApiKeyFormat(config.apiKey, config.providerId)) {
-        storedApiKey = config.apiKey;
+      const sanitizedKey = config.apiKey ? sanitizeApiKey(config.apiKey) : null;
+      if (sanitizedKey && isValidApiKeyFormat(sanitizedKey, config.providerId)) {
+        storedApiKey = sanitizedKey;
         sendMessageToUI("api-key-status", {
           hasKey: true,
           provider: selectedProvider,
@@ -6611,6 +6697,7 @@ ${scoringCriteria}
   }
   async function handleSaveApiKey(apiKey, model, provider) {
     try {
+      apiKey = sanitizeApiKey(apiKey);
       const providerId = provider || selectedProvider;
       if (!isValidApiKeyFormat(apiKey, providerId)) {
         const providerObj2 = getProvider(providerId);
@@ -6631,6 +6718,87 @@ ${scoringCriteria}
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       sendMessageToUI("api-key-saved", { success: false, error: errorMessage });
       figma.notify(`Failed to save API key: ${errorMessage}`, { error: true });
+    }
+  }
+  async function handleTestApiKey(apiKey, model, provider) {
+    try {
+      console.log("Testing API key...");
+      apiKey = sanitizeApiKey(apiKey);
+      const testProvider = provider || selectedProvider;
+      const testModel = model || selectedModel;
+      if (!isValidApiKeyFormat(apiKey, testProvider)) {
+        const expectedFormat = getExpectedKeyFormat(testProvider);
+        sendMessageToUI("test-api-key-result", {
+          success: false,
+          error: `Invalid API key format. Expected format: ${expectedFormat}`,
+          details: `Provider: ${testProvider}
+Model: ${testModel}
+Expected format: ${expectedFormat}`
+        });
+        return;
+      }
+      console.log("Key format check:", {
+        length: apiKey.length,
+        prefix: apiKey.substring(0, 7),
+        trimmedLength: apiKey.trim().length,
+        suffix: apiKey.substring(apiKey.length - 4)
+      });
+      const testPrompt = 'Reply with just the word "success" and nothing else.';
+      const response = await callProvider(testProvider, apiKey, {
+        prompt: testPrompt,
+        model: testModel,
+        maxTokens: 10,
+        temperature: 0
+      });
+      if (response && response.content && response.content.trim().length > 0) {
+        const providerName = getProviderDisplayName(testProvider);
+        figma.notify(`${providerName} API key is valid`, { timeout: 2e3 });
+        sendMessageToUI("test-api-key-result", {
+          success: true,
+          provider: testProvider,
+          model: testModel
+        });
+      } else {
+        throw new Error("Empty response from API");
+      }
+    } catch (error) {
+      console.error("API key test failed:", error);
+      const errorDetails = [
+        `Error: ${error.message || "Unknown error"}`,
+        error.code ? `Code: ${error.code}` : "",
+        error.status ? `Status: ${error.status}` : "",
+        `Provider: ${provider || selectedProvider}`,
+        `Model: ${model || selectedModel}`
+      ].filter(Boolean).join("\n");
+      sendMessageToUI("test-api-key-result", {
+        success: false,
+        error: error.message || "API key validation failed",
+        details: errorDetails
+      });
+    }
+  }
+  function getExpectedKeyFormat(provider) {
+    switch (provider) {
+      case "anthropic":
+        return "sk-ant-...";
+      case "openai":
+        return "sk-...";
+      case "google":
+        return "AIza...";
+      default:
+        return "Valid API key";
+    }
+  }
+  function getProviderDisplayName(provider) {
+    switch (provider) {
+      case "anthropic":
+        return "Claude";
+      case "openai":
+        return "OpenAI";
+      case "google":
+        return "Gemini";
+      default:
+        return provider;
     }
   }
   async function handleUpdateModel(model) {
@@ -6713,13 +6881,75 @@ ${scoringCriteria}
       });
     }
   }
+  async function resolveAnalyzableNode(selection) {
+    var _a, _b;
+    let selectedNode = selection[0];
+    if (selectedNode.type === "INSTANCE") {
+      const instance = selectedNode;
+      try {
+        const mainComponent = await instance.getMainComponentAsync();
+        if (mainComponent) {
+          figma.notify("Analyzing main component instead of instance...", { timeout: 2e3 });
+          selectedNode = mainComponent;
+        } else {
+          throw new Error("This instance has no main component. Please select a component directly.");
+        }
+      } catch (error) {
+        console.error("Error accessing main component:", error);
+        throw new Error("Could not access main component. Please select a component directly.");
+      }
+    }
+    if (selectedNode.type === "COMPONENT" && ((_a = selectedNode.parent) == null ? void 0 : _a.type) === "COMPONENT_SET") {
+      const parentComponentSet = selectedNode.parent;
+      figma.notify("Analyzing parent component set to include all variants...", { timeout: 2e3 });
+      selectedNode = parentComponentSet;
+    }
+    if (!isValidNodeForAnalysis(selectedNode)) {
+      const componentTypes = /* @__PURE__ */ new Set(["COMPONENT_SET", "COMPONENT", "INSTANCE"]);
+      let componentAncestor = null;
+      let frameAncestor = null;
+      let ancestor = selectedNode.parent;
+      while (ancestor && "type" in ancestor) {
+        const sceneAncestor = ancestor;
+        if (componentTypes.has(sceneAncestor.type) && !componentAncestor) {
+          componentAncestor = sceneAncestor;
+          break;
+        }
+        if (!frameAncestor && isValidNodeForAnalysis(sceneAncestor)) {
+          frameAncestor = sceneAncestor;
+        }
+        ancestor = ancestor.parent;
+      }
+      const bestAncestor = componentAncestor || frameAncestor;
+      if (bestAncestor) {
+        figma.notify(`Analyzing parent ${bestAncestor.type.toLowerCase()} "${bestAncestor.name}"...`, { timeout: 2e3 });
+        selectedNode = bestAncestor;
+      }
+    }
+    if (selectedNode.type === "INSTANCE") {
+      const instance = selectedNode;
+      try {
+        const mainComponent = await instance.getMainComponentAsync();
+        if (mainComponent) {
+          figma.notify("Analyzing main component instead of instance...", { timeout: 2e3 });
+          selectedNode = mainComponent;
+        }
+      } catch (e) {
+      }
+    }
+    if (selectedNode.type === "COMPONENT" && ((_b = selectedNode.parent) == null ? void 0 : _b.type) === "COMPONENT_SET") {
+      const parentComponentSet = selectedNode.parent;
+      figma.notify("Analyzing parent component set to include all variants...", { timeout: 2e3 });
+      selectedNode = parentComponentSet;
+    }
+    if (!isValidNodeForAnalysis(selectedNode)) {
+      throw new Error("Please select a Frame, Component, Component Set, or Instance to analyze");
+    }
+    return selectedNode;
+  }
   async function handleEnhancedAnalyze(options) {
     var _a, _b;
     try {
-      if (!storedApiKey) {
-        const providerName = getProvider(selectedProvider).name;
-        throw new Error(`API key not found. Please save your ${providerName} API key first.`);
-      }
       const selection = figma.currentPage.selection;
       if (selection.length === 0) {
         throw new Error("No component selected. Please select a Figma component to analyze.");
@@ -6728,96 +6958,58 @@ ${scoringCriteria}
         await handleBatchAnalysis(selection, options);
         return;
       }
-      let selectedNode = selection[0];
-      const originalSelectedNode = selectedNode;
-      if (selectedNode.type === "INSTANCE") {
-        const instance = selectedNode;
-        try {
-          const mainComponent = await instance.getMainComponentAsync();
-          if (mainComponent) {
-            figma.notify("Analyzing main component instead of instance...", { timeout: 2e3 });
-            selectedNode = mainComponent;
-          } else {
-            throw new Error("This instance has no main component. Please select a component directly.");
-          }
-        } catch (error) {
-          console.error("Error accessing main component:", error);
-          throw new Error("Could not access main component. Please select a component directly.");
-        }
-      }
-      if (selectedNode.type === "COMPONENT" && ((_a = selectedNode.parent) == null ? void 0 : _a.type) === "COMPONENT_SET") {
-        const component = selectedNode;
-        const parentComponentSet = component.parent;
-        figma.notify("Analyzing parent component set to include all variants...", { timeout: 2e3 });
-        selectedNode = parentComponentSet;
-      }
-      if (!isValidNodeForAnalysis(selectedNode)) {
-        const componentTypes = /* @__PURE__ */ new Set(["COMPONENT_SET", "COMPONENT", "INSTANCE"]);
-        let componentAncestor = null;
-        let frameAncestor = null;
-        let ancestor = selectedNode.parent;
-        while (ancestor && "type" in ancestor) {
-          const sceneAncestor = ancestor;
-          if (componentTypes.has(sceneAncestor.type) && !componentAncestor) {
-            componentAncestor = sceneAncestor;
-            break;
-          }
-          if (!frameAncestor && isValidNodeForAnalysis(sceneAncestor)) {
-            frameAncestor = sceneAncestor;
-          }
-          ancestor = ancestor.parent;
-        }
-        const bestAncestor = componentAncestor || frameAncestor;
-        if (bestAncestor) {
-          figma.notify(`Analyzing parent ${bestAncestor.type.toLowerCase()} "${bestAncestor.name}"...`, { timeout: 2e3 });
-          selectedNode = bestAncestor;
-        }
-      }
-      if (selectedNode.type === "INSTANCE") {
-        const instance = selectedNode;
-        try {
-          const mainComponent = await instance.getMainComponentAsync();
-          if (mainComponent) {
-            figma.notify("Analyzing main component instead of instance...", { timeout: 2e3 });
-            selectedNode = mainComponent;
-          }
-        } catch (e) {
-        }
-      }
-      if (selectedNode.type === "COMPONENT" && ((_b = selectedNode.parent) == null ? void 0 : _b.type) === "COMPONENT_SET") {
-        const parentComponentSet = selectedNode.parent;
-        figma.notify("Analyzing parent component set to include all variants...", { timeout: 2e3 });
-        selectedNode = parentComponentSet;
-      }
-      if (!isValidNodeForAnalysis(selectedNode)) {
-        throw new Error("Please select a Frame, Component, Component Set, or Instance to analyze");
-      }
-      await consistencyEngine.loadDesignSystemsKnowledge();
+      const selectedNode = await resolveAnalyzableNode(selection);
       const componentContext = await extractComponentContext(selectedNode);
+      figma.notify("Analyzing component...", { timeout: 2e3 });
       const enhancedOptions = __spreadValues({
-        enableMCPEnhancement: true,
-        // Enable MCP enhancement by default
         batchMode: options.batchMode || false,
         enableAudit: options.enableAudit !== false,
-        // Enable by default
         includeTokenAnalysis: options.includeTokenAnalysis !== false
       }, options);
-      figma.notify("Performing enhanced analysis with design systems knowledge...", { timeout: 3e3 });
-      const result = await processEnhancedAnalysis(
+      const deterministicResult = await runDeterministicAnalysis(
+        selectedNode,
         componentContext,
-        storedApiKey,
-        selectedModel,
-        enhancedOptions,
-        selectedProvider
+        enhancedOptions
       );
-      lastAnalyzedMetadata = result.metadata;
+      lastAnalyzedMetadata = deterministicResult.metadata;
       lastAnalyzedNode = selectedNode;
-      sendMessageToUI("enhanced-analysis-result", __spreadProps(__spreadValues({}, result), {
+      const hasApiKey = !!storedApiKey;
+      deterministicResult.aiPending = hasApiKey;
+      sendMessageToUI("enhanced-analysis-result", __spreadProps(__spreadValues({}, deterministicResult), {
         analyzedNodeId: selectedNode.id
       }));
-      figma.notify("Enhanced analysis complete! Check the results panel.", { timeout: 3e3 });
+      if (!hasApiKey) {
+        figma.notify("Analysis complete! Configure an API key in Settings to unlock AI insights.", { timeout: 3e3 });
+        return;
+      }
+      try {
+        figma.notify("Running AI-enhanced analysis...", { timeout: 3e3 });
+        await consistencyEngine.loadDesignSystemsKnowledge();
+        const aiResult = await processEnhancedAnalysis(
+          componentContext,
+          storedApiKey,
+          selectedModel,
+          __spreadProps(__spreadValues({}, enhancedOptions), { enableMCPEnhancement: true }),
+          selectedProvider
+        );
+        lastAnalyzedMetadata = aiResult.metadata;
+        sendMessageToUI("ai-enhancement-result", {
+          description: (_a = aiResult.metadata) == null ? void 0 : _a.description,
+          recommendations: aiResult.recommendations,
+          mcpReadiness: (_b = aiResult.metadata) == null ? void 0 : _b.mcpReadiness,
+          metadata: aiResult.metadata
+        });
+        figma.notify("AI-enhanced analysis complete!", { timeout: 2e3 });
+      } catch (aiError) {
+        console.error("AI enhancement failed (deterministic results still shown):", aiError);
+        const aiErrorMsg = aiError instanceof Error ? aiError.message : "Unknown AI error";
+        sendMessageToUI("ai-enhancement-result", {
+          error: aiErrorMsg
+        });
+        figma.notify(`AI enhancement failed: ${aiErrorMsg}. Deterministic results are shown.`, { error: true, timeout: 4e3 });
+      }
     } catch (error) {
-      console.error("Error during enhanced analysis:", error);
+      console.error("Error during analysis:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       figma.notify(`Analysis failed: ${errorMessage}`, { error: true });
       sendMessageToUI("analysis-error", { error: errorMessage });
@@ -6905,7 +7097,11 @@ ${scoringCriteria}
       console.log("Processing chat message:", data.message);
       if (!storedApiKey) {
         const providerName = getProvider(selectedProvider).name;
-        throw new Error(`API key not found. Please save your ${providerName} API key first.`);
+        sendMessageToUI("chat-error", {
+          error: `Chat requires an API key. Please configure your ${providerName} API key in Settings to start chatting.`,
+          requiresApiKey: true
+        });
+        return;
       }
       sendMessageToUI("chat-response-loading", { isLoading: true });
       const componentContext = getCurrentComponentContext();
@@ -6978,7 +7174,6 @@ ${scoringCriteria}
       if (node.parent === figma.currentPage) {
         return true;
       }
-      const allPages = figma.root.children.filter((child) => child.type === "PAGE");
       const currentPage = figma.currentPage;
       if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
         return findNodeInPage(currentPage, node.id);
