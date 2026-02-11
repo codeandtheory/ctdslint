@@ -2616,15 +2616,7 @@
     const systemResults = document.getElementById('system-results');
     const systemAuditContent = document.getElementById('system-audit-content');
 
-    // Component Analysis Results Elements
-    const analysisResults = document.getElementById('analysis-results');
-    const auditContent = document.getElementById('audit-content');
-    const propertyCheatsheet = document.getElementById('property-cheatsheet');
-    const tokenSuggestions = document.getElementById('token-suggestions');
-    const metadataContent = document.getElementById('metadata-content');
-    const auditScore = document.getElementById('audit-score');
-    const mcpReadiness = document.getElementById('mcp-readiness');
-    const exportMetadataButton = document.getElementById('export-metadata');
+    // Removed: Component Analysis Results Elements (Component Audit removed)
 
     // Playground elements
     const generatePlaygroundButton = document.getElementById('generate-playground');
@@ -3029,10 +3021,7 @@
 
       // Removed batch mode and config visibility toggles (Component Audit removed)
 
-      // Export functionality
-      if (exportMetadataButton) {
-        exportMetadataButton.addEventListener('click', handleExportMetadata);
-      }
+      // Removed: Export functionality (Component Audit removed)
 
       // Playground and documentation buttons (with null checks)
       if (generatePlaygroundButton) {
@@ -3730,8 +3719,7 @@
     function handleAnalyzeSystem() {
       updateStatus('Running CTDS audit...', 'info');
 
-      // Hide component results, show system results
-      analysisResults.classList.add('hidden');
+      // Show system results
       systemResults.classList.remove('hidden');
       
       // Show loading state in system audit content
