@@ -288,8 +288,14 @@ export async function checkLegacyMigration(): Promise<{
   legacyModel?: string;
 }> {
   try {
-    const legacyKey = await figma.clientStorage.getAsync(STORAGE_KEYS.LEGACY_CLAUDE_KEY);
-    const legacyModel = await figma.clientStorage.getAsync(STORAGE_KEYS.LEGACY_CLAUDE_MODEL);
+    // Check both old clientStorage and root storage
+    const legacyKeyClient = await figma.clientStorage.getAsync(STORAGE_KEYS.LEGACY_CLAUDE_KEY);
+    const legacyKeyRoot = await figma.root.getPluginDataAsync(STORAGE_KEYS.LEGACY_CLAUDE_KEY);
+    const legacyKey = legacyKeyClient || legacyKeyRoot;
+
+    const legacyModelClient = await figma.clientStorage.getAsync(STORAGE_KEYS.LEGACY_CLAUDE_MODEL);
+    const legacyModelRoot = await figma.root.getPluginDataAsync(STORAGE_KEYS.LEGACY_CLAUDE_MODEL);
+    const legacyModel = legacyModelClient || legacyModelRoot;
 
     if (legacyKey) {
       return {
@@ -317,20 +323,22 @@ export async function migrateLegacyStorage(): Promise<void> {
 
   console.log('Migrating legacy Claude storage to multi-provider format...');
 
-  // Save to new format
+  // Save to new format using root scope for persistence
   if (migration.legacyKey) {
-    await figma.clientStorage.setAsync(STORAGE_KEYS.apiKey('anthropic'), migration.legacyKey);
+    await figma.root.setPluginDataAsync(STORAGE_KEYS.apiKey('anthropic'), migration.legacyKey);
   }
 
-  await figma.clientStorage.setAsync(STORAGE_KEYS.SELECTED_PROVIDER, 'anthropic');
+  await figma.root.setPluginDataAsync(STORAGE_KEYS.SELECTED_PROVIDER, 'anthropic');
 
   if (migration.legacyModel) {
-    await figma.clientStorage.setAsync(STORAGE_KEYS.SELECTED_MODEL, migration.legacyModel);
+    await figma.root.setPluginDataAsync(STORAGE_KEYS.SELECTED_MODEL, migration.legacyModel);
   }
 
-  // Clear legacy keys
+  // Clear legacy keys from both storages
   await figma.clientStorage.deleteAsync(STORAGE_KEYS.LEGACY_CLAUDE_KEY);
   await figma.clientStorage.deleteAsync(STORAGE_KEYS.LEGACY_CLAUDE_MODEL);
+  await figma.root.setPluginDataAsync(STORAGE_KEYS.LEGACY_CLAUDE_KEY, '');
+  await figma.root.setPluginDataAsync(STORAGE_KEYS.LEGACY_CLAUDE_MODEL, '');
 
   console.log('Migration complete');
 }
@@ -348,9 +356,10 @@ export async function loadProviderConfig(): Promise<{
   // Run migration first if needed
   await migrateLegacyStorage();
 
-  const providerId = (await figma.clientStorage.getAsync(STORAGE_KEYS.SELECTED_PROVIDER) as ProviderId) || DEFAULTS.provider;
-  const modelId = (await figma.clientStorage.getAsync(STORAGE_KEYS.SELECTED_MODEL) as string) || DEFAULT_MODELS[providerId];
-  const apiKey = await figma.clientStorage.getAsync(STORAGE_KEYS.apiKey(providerId)) as string | null;
+  // Use root scope for cross-document persistence
+  const providerId = (await figma.root.getPluginDataAsync(STORAGE_KEYS.SELECTED_PROVIDER) as ProviderId) || DEFAULTS.provider;
+  const modelId = (await figma.root.getPluginDataAsync(STORAGE_KEYS.SELECTED_MODEL) as string) || DEFAULT_MODELS[providerId];
+  const apiKey = await figma.root.getPluginDataAsync(STORAGE_KEYS.apiKey(providerId)) as string | null;
 
   return { providerId, modelId, apiKey };
 }
@@ -367,11 +376,12 @@ export async function saveProviderConfig(
   modelId: string,
   apiKey?: string
 ): Promise<void> {
-  await figma.clientStorage.setAsync(STORAGE_KEYS.SELECTED_PROVIDER, providerId);
-  await figma.clientStorage.setAsync(STORAGE_KEYS.SELECTED_MODEL, modelId);
+  // Use root scope for cross-document persistence
+  await figma.root.setPluginDataAsync(STORAGE_KEYS.SELECTED_PROVIDER, providerId);
+  await figma.root.setPluginDataAsync(STORAGE_KEYS.SELECTED_MODEL, modelId);
 
   if (apiKey !== undefined) {
-    await figma.clientStorage.setAsync(STORAGE_KEYS.apiKey(providerId), apiKey);
+    await figma.root.setPluginDataAsync(STORAGE_KEYS.apiKey(providerId), apiKey);
   }
 }
 
@@ -381,5 +391,6 @@ export async function saveProviderConfig(
  * @param providerId - Provider to clear key for
  */
 export async function clearProviderKey(providerId: ProviderId): Promise<void> {
-  await figma.clientStorage.deleteAsync(STORAGE_KEYS.apiKey(providerId));
+  // Use root scope for cross-document persistence
+  await figma.root.setPluginDataAsync(STORAGE_KEYS.apiKey(providerId), '');
 }

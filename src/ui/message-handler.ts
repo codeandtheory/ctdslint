@@ -588,8 +588,6 @@ async function handleClearApiKey(): Promise<void> {
   try {
     storedApiKey = null;
     await clearProviderKey(selectedProvider);
-    // Also clear legacy key for backward compatibility
-    await figma.clientStorage.setAsync('claude-api-key', '');
     const providerName = getProvider(selectedProvider).name;
     sendMessageToUI('api-key-cleared', { success: true });
     figma.notify(`${providerName} API key cleared`, { timeout: 2000 });
