@@ -2278,12 +2278,15 @@
       <div class="content">
         <div class="chat-wrapper">
                     <!-- API Key Configuration (Required for Chat) -->
-          <div class="card" id="api-key-card-chat">
-            <div class="card-header">
-              <h2 class="card-title">Chat Configuration</h2>
+          <div class="collapsible" id="api-key-card-chat">
+            <div class="collapsible-header active" onclick="toggleCollapsible(this)">
+              <div class="collapsible-title">
+                <span class="collapsible-icon">▶</span>
+                <span>Chat Configuration</span>
+              </div>
             </div>
 
-            <div id="config-content-chat">
+            <div class="collapsible-content active" id="config-content-chat">
               <!-- Provider Selection -->
               <div class="form-group">
                 <label for="provider-select">AI Provider</label>
@@ -2344,8 +2347,9 @@
               </div>
             </div>
           </div>
+          </div>
 
-<!-- Chat Header -->
+          <!-- Chat Header -->
           <div class="chat-header">
             <div class="chat-title">
               <h2>Design Systems Chat</h2>
@@ -3742,6 +3746,17 @@
         clearApiKeyLink.classList.add('hidden');
         apiKeySaved = false;
         updateStatus('API key cleared', 'info');
+
+        // Expand the chat configuration section so user can enter new key
+        const chatConfigHeader = document.querySelector('#api-key-card-chat .collapsible-header');
+        const chatConfigContent = document.querySelector('#api-key-card-chat .collapsible-content');
+        if (chatConfigHeader && chatConfigContent) {
+          chatConfigHeader.classList.add('active');
+          chatConfigContent.classList.add('active');
+        }
+
+        // Update chat input state
+        updateChatInputState();
       }
     }
 
@@ -3936,6 +3951,14 @@
         apiKeyInput.value = '';
         apiKeyInput.placeholder = 'API key saved ✓';
 
+        // Collapse the chat configuration section
+        const chatConfigHeader = document.querySelector('#api-key-card-chat .collapsible-header');
+        const chatConfigContent = document.querySelector('#api-key-card-chat .collapsible-content');
+        if (chatConfigHeader && chatConfigContent) {
+          chatConfigHeader.classList.remove('active');
+          chatConfigContent.classList.remove('active');
+        }
+
         // Update chat input state
         updateChatInputState();
       } else {
@@ -3961,6 +3984,14 @@
         updateStatus('API key is configured', 'success');
         clearApiKeyLink.classList.remove('hidden');
         apiKeyInput.placeholder = 'API key saved ✓';
+
+        // Collapse the chat configuration section
+        const chatConfigHeader = document.querySelector('#api-key-card-chat .collapsible-header');
+        const chatConfigContent = document.querySelector('#api-key-card-chat .collapsible-content');
+        if (chatConfigHeader && chatConfigContent) {
+          chatConfigHeader.classList.remove('active');
+          chatConfigContent.classList.remove('active');
+        }
 
         // Enable chat tab
         const chatTabButton = document.getElementById('tab-chat');
