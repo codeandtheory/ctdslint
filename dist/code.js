@@ -481,6 +481,8 @@
     "fontFamily",
     "fontSize",
     "fontWeight",
+    "fontStyle",
+    // Figma uses fontStyle for some text styles (maps to weight or style)
     "letterSpacing",
     "lineHeight"
   ];
@@ -510,6 +512,9 @@
         const boundProperties = [];
         const unboundProperties = [];
         const boundVars = style.boundVariables || {};
+        if (results.length < 3) {
+          console.log(`\u{1F50D} [DEBUG] Style "${style.name}" boundVariables:`, Object.keys(boundVars).length > 0 ? Object.keys(boundVars) : "none");
+        }
         for (const prop of TYPOGRAPHY_PROPERTIES) {
           const binding = boundVars[prop];
           if (binding && binding.id) {
@@ -528,6 +533,10 @@
               case "fontWeight":
                 expectedPattern = `font-weight/*`;
                 isCorrectBinding = variableName.includes("font-weight");
+                break;
+              case "fontStyle":
+                expectedPattern = `font-weight/*`;
+                isCorrectBinding = variableName.includes("font-weight") || variableName.includes("font-style");
                 break;
               case "letterSpacing":
                 expectedPattern = `letter-spacing/${size}`;
@@ -603,6 +612,7 @@
                 case "fontSize":
                   return `${prop} \u2192 font-size/${category}/${size}`;
                 case "fontWeight":
+                case "fontStyle":
                   return `${prop} \u2192 font-weight/${category}/...`;
                 case "lineHeight":
                   return `${prop} \u2192 line-height/${category}/${size}`;

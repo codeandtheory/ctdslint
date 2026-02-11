@@ -792,8 +792,9 @@ export async function validateTextStylesAgainstVariables(): Promise<{
  */
 const TYPOGRAPHY_PROPERTIES = [
   'fontFamily',
-  'fontSize', 
+  'fontSize',
   'fontWeight',
+  'fontStyle',  // Figma uses fontStyle for some text styles (maps to weight or style)
   'letterSpacing',
   'lineHeight'
 ] as const;
@@ -897,7 +898,12 @@ export async function validateTextStyleBindings(): Promise<{
       
       // Check each typography property
       const boundVars = (style as any).boundVariables || {};
-      
+
+      // Debug: log what boundVariables actually contains for first few styles
+      if (results.length < 3) {
+        console.log(`🔍 [DEBUG] Style "${style.name}" boundVariables:`, Object.keys(boundVars).length > 0 ? Object.keys(boundVars) : 'none');
+      }
+
       for (const prop of TYPOGRAPHY_PROPERTIES) {
         const binding = boundVars[prop];
         
@@ -926,6 +932,11 @@ export async function validateTextStyleBindings(): Promise<{
               // font-weight is flexible, just needs to be a font-weight variable
               expectedPattern = `font-weight/*`;
               isCorrectBinding = variableName.includes('font-weight');
+              break;
+            case 'fontStyle':
+              // fontStyle in Figma can map to font-weight variables (Regular, Bold, etc.)
+              expectedPattern = `font-weight/*`;
+              isCorrectBinding = variableName.includes('font-weight') || variableName.includes('font-style');
               break;
             case 'letterSpacing':
               // letter-spacing can be "letter-spacing/{size}" or "letter-spacing/{category}/{size}"
@@ -1025,6 +1036,7 @@ export async function validateTextStyleBindings(): Promise<{
               case 'fontSize':
                 return `${prop} → font-size/${category}/${size}`;
               case 'fontWeight':
+              case 'fontStyle':
                 return `${prop} → font-weight/${category}/...`;
               case 'lineHeight':
                 return `${prop} → line-height/${category}/${size}`;
