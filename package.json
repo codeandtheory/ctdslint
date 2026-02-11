@@ -1,7 +1,7 @@
 {
-  "name": "figmalint",
-  "version": "2.3.0",
-  "description": "FigmaLint - Component linting for Figma that audits design system compliance, MCP compatibility, accessibility, and generates developer handoff documentation.",
+  "name": "ctdslint",
+  "version": "3.0.0",
+  "description": "ctdsLint - CTDS (Comprehensive Design Token System) audit tool for Figma. Validates variable collections, text styles, and component variable bindings for design system compliance.",
   "main": "dist/code.js",
   "scripts": {
     "build": "npm run bundle && npm run copy-assets",
@@ -16,14 +16,13 @@
   "keywords": [
     "figma",
     "plugin",
-    "linter",
-    "lint",
-    "audit",
-    "mcp",
+    "ctds",
+    "design-tokens",
     "design-system",
-    "accessibility",
-    "tokens",
-    "developer-handoff"
+    "audit",
+    "variables",
+    "validation",
+    "tokens"
   ],
   "author": "",
   "license": "ISC",

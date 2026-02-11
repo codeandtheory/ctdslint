@@ -120,8 +120,7 @@ export const DEFAULT_COLLECTION_REQUIREMENTS: CollectionRequirement[] = [
     namePattern: /primitives?/i,
     displayName: 'Primitives',
     requiredCategories: [
-      { name: 'color' },
-      { name: 'space' }
+      { name: 'color' }
     ]
   },
   {

@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>FigmaLint</title>
+  <title>ctdsLint</title>
   <style>
     /* Carbon-Inspired Design System for FigmaLint */
     :root {
@@ -2210,19 +2210,11 @@
     <div class="header">
       <div class="plugin-title">
         <div class="plugin-icon">FL</div>
-        <h1 class="plugin-name">FigmaLint</h1>
+        <h1 class="plugin-name">ctdsLint</h1>
       </div>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="tabs-navigation">
-      <button class="tab-button active" id="tab-analyze" onclick="switchTab('analyze')">
-        Analyze
-      </button>
-      <button class="tab-button" id="tab-chat" onclick="switchTab('chat')">
-        Chat
-      </button>
-    </div>
+    <!-- Single view - no tabs needed -->
 
                 <!-- Tab Content: Analyze -->
     <div class="tab-content active" id="content-analyze">
@@ -2263,132 +2255,6 @@
               <div class="skeleton" style="width: 80%;"></div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab Content: Chat -->
-    <div class="tab-content" id="content-chat">
-      <div class="content" style="display: flex; flex-direction: column; padding: 0; overflow: hidden;">
-
-        <!-- API Key Configuration (Collapsible) -->
-        <div class="collapsible" id="api-key-card-chat" style="flex-shrink: 0; margin: 12px 12px 0 12px;">
-          <div class="collapsible-header active" onclick="toggleCollapsible(this)">
-            <div class="collapsible-title">
-              <span class="collapsible-icon">▶</span>
-              <span>Chat Configuration</span>
-            </div>
-          </div>
-
-          <div class="collapsible-content active" id="config-content-chat">
-              <!-- Provider Selection -->
-              <div class="form-group">
-                <label for="provider-select">AI Provider</label>
-                <select id="provider-select">
-                  <option value="anthropic">Anthropic (Claude)</option>
-                  <option value="openai">OpenAI (GPT)</option>
-                  <option value="google">Google (Gemini)</option>
-                </select>
-                <p class="card-subtitle">Select your preferred AI provider</p>
-              </div>
-
-              <!-- API Key Input -->
-              <div class="form-group">
-                <label for="api-key"><span id="api-key-label">Claude</span> API Key</label>
-                <div class="input-wrapper">
-                  <input
-                    type="password"
-                    id="api-key"
-                    placeholder="sk-ant-..."
-                    autocomplete="off"
-                  >
-                  <span class="input-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 4v2h-.25A1.75 1.75 0 002 7.75v5.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0014 13.25v-5.5A1.75 1.75 0 0012.25 6H12V4a4 4 0 10-8 0zm6 2V4a2 2 0 10-4 0v2h4zm-5.25 2h6.5a.25.25 0 01.25.25v5.5a.25.25 0 01-.25.25h-8.5a.25.25 0 01-.25-.25v-5.5a.25.25 0 01.25-.25z"/></svg></span>
-                </div>
-                <p class="card-subtitle" id="api-key-hint">Your API key is stored securely in this session. Required for chat.</p>
-              </div>
-
-              <!-- Model Selection (dynamic based on provider) -->
-              <div class="form-group">
-                <label for="model-select"><span id="model-label">Claude</span> Model</label>
-                <select id="model-select">
-                  <!-- Anthropic (Claude) Models -->
-                  <optgroup label="Anthropic (Claude)" id="anthropic-models">
-                    <option value="claude-opus-4-5-20251218">Claude Opus 4.5 (Flagship - Advanced Reasoning)</option>
-                    <option value="claude-sonnet-4-5-20250929" selected>Claude Sonnet 4.5 (Recommended - Best Value)</option>
-                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Fast - Economy)</option>
-                  </optgroup>
-                  <!-- OpenAI (GPT) Models -->
-                  <optgroup label="OpenAI (GPT)" id="openai-models" style="display: none;">
-                    <option value="gpt-5.2" disabled>GPT-5.2 (Flagship)</option>
-                    <option value="gpt-5.2-pro" disabled>GPT-5.2 Pro (Extended Reasoning)</option>
-                    <option value="gpt-5-mini" disabled>GPT-5 Mini (Fast - Economy)</option>
-                  </optgroup>
-                  <!-- Google (Gemini) Models -->
-                  <optgroup label="Google (Gemini)" id="google-models" style="display: none;">
-                    <option value="gemini-3-pro-preview" disabled>Gemini 3 Pro (Flagship - Multimodal)</option>
-                    <option value="gemini-2.5-pro" disabled>Gemini 2.5 Pro (Recommended)</option>
-                    <option value="gemini-2.5-flash" disabled>Gemini 2.5 Flash (Fast - Economy)</option>
-                  </optgroup>
-                </select>
-                <p class="card-subtitle">Choose the model for chat</p>
-              </div>
-
-              <div class="button-group mt-md">
-                <button id="save-key" class="button button-primary">
-                  <span>Save API Key</span>
-                </button>
-                <a href="#" id="clear-api-key-link" class="button button-ghost hidden">Clear Key</a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Chat Messages Area (Takes remaining space) -->
-        <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 12px; padding-top: 0;">
-
-          <!-- Chat Header -->
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; flex-shrink: 0;">
-            <h3 style="font-size: 12px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Design Systems Chat</h3>
-            <button class="button button-ghost" id="clear-chat" title="Clear chat history" style="padding: 4px 8px; font-size: 11px;">
-              Clear
-            </button>
-          </div>
-
-          <!-- Chat Messages Container (Scrollable) -->
-          <div id="chat-messages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0;">
-            <!-- Empty state -->
-            <div id="chat-empty" style="flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px;">
-              <div>
-                <div style="font-size: 32px; opacity: 0.2; margin-bottom: 8px;">💬</div>
-                <h4 style="font-size: 14px; margin: 0 0 4px 0;">Ask about design systems!</h4>
-                <p style="font-size: 12px; color: var(--text-tertiary); margin: 0;">Get help with components, tokens, patterns, and best practices.</p>
-              </div>
-            </div>
-            <!-- Messages will be added here -->
-          </div>
-
-          <!-- Chat Input (Fixed at bottom) -->
-          <div style="flex-shrink: 0; padding-top: 12px;">
-            <div style="display: flex; gap: 8px; align-items: flex-end; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px;">
-              <textarea
-                id="chat-input"
-                placeholder="Ask about design systems..."
-                rows="1"
-                disabled
-                style="flex: 1; border: none; background: transparent; resize: none; font-size: 12px; line-height: 1.5; outline: none; min-height: 20px; max-height: 100px; padding: 0;"
-              ></textarea>
-              <button id="send-chat" disabled title="Send message" style="background: var(--interactive); color: white; border: none; border-radius: 4px; padding: 6px 12px; cursor: pointer; flex-shrink: 0;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="22" y1="2" x2="11" y2="13"></line>
-                  <polygon points="22,2 15,22 11,13 2,9"></polygon>
-                </svg>
-              </button>
-            </div>
-            <div id="chat-status" class="hidden" style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">
-              <span class="chat-status-text">Thinking...</span>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
@@ -2538,89 +2404,17 @@
     let namingItemsShown = 15; // Initial limit for naming pagination
 
     // Chat State Management
-    let chatHistory = [];
-    let chatSessionId = 'session-' + Date.now();
-    let isWaitingForResponse = false;
-
     // DOM Elements
-    const apiKeyInput = document.getElementById('api-key');
-    const modelSelect = document.getElementById('model-select');
-    const providerSelect = document.getElementById('provider-select');
-    const apiKeyLabel = document.getElementById('api-key-label');
-    const modelLabel = document.getElementById('model-label');
-    const apiKeyHint = document.getElementById('api-key-hint');
-    const saveKeyButton = document.getElementById('save-key');
     const runCtdsAuditButton = document.getElementById('run-ctds-audit');
 
-    // Provider Configuration
-    const providerConfig = {
-      anthropic: {
-        name: 'Claude',
-        placeholder: 'sk-ant-...',
-        hint: 'Get your API key from console.anthropic.com',
-        defaultModel: 'claude-sonnet-4-5-20250929'
-      },
-      openai: {
-        name: 'OpenAI',
-        placeholder: 'sk-...',
-        hint: 'Get your API key from platform.openai.com',
-        defaultModel: 'gpt-5.2'
-      },
-      google: {
-        name: 'Gemini',
-        placeholder: 'AIza...',
-        hint: 'Get your API key from aistudio.google.com',
-        defaultModel: 'gemini-2.5-pro'
-      }
-    };
-
-    // Current provider state
-    let currentProvider = 'anthropic';
-    let providerApiKeys = {}; // Store keys per provider
     const statusContainer = document.getElementById('status-container');
     const statusDiv = document.getElementById('status');
     const statusIcon = document.getElementById('status-icon');
     const statusText = document.getElementById('status-text');
-    const clearApiKeyLink = document.getElementById('clear-api-key-link');
-
-    // Configuration UI Elements
-    const apiKeyCard = document.getElementById('api-key-card');
-    const quickActions = document.getElementById('quick-actions');
-    // Removed: quickAnalyzeSystemButton, quickAnalyzeButton, showConfigButton, hideConfigButton
-    // (Component Audit removed)
-
-    // Batch Mode Elements
-    const batchModeToggle = document.getElementById('batch-mode-toggle');
-    const batchModeSwitch = document.getElementById('batch-mode-switch');
 
     // System Audit Results Elements
     const systemResults = document.getElementById('system-results');
     const systemAuditContent = document.getElementById('system-audit-content');
-
-    // Removed: Component Analysis Results Elements (Component Audit removed)
-
-    // Playground elements
-    const generatePlaygroundButton = document.getElementById('generate-playground');
-    const playgroundEmpty = document.getElementById('playground-empty');
-    const playgroundContent = document.getElementById('playground-content');
-    const playgroundGrid = document.getElementById('playground-grid');
-
-    // Documentation elements
-    const exportDocsButton = document.getElementById('export-docs');
-    const generateDocsFrameButton = document.getElementById('generate-docs-frame');
-    const saveNotesButton = document.getElementById('save-notes');
-    const docsEmpty = document.getElementById('docs-empty');
-    const docsPreview = document.getElementById('docs-preview');
-    const collabNotes = document.getElementById('collab-notes');
-    // Note: export-format element is created dynamically, so we get it in the handler function
-
-    // Chat Elements
-    const chatEmpty = document.getElementById('chat-empty');
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input');
-    const sendChatButton = document.getElementById('send-chat');
-    const clearChatButton = document.getElementById('clear-chat');
-    const chatStatus = document.getElementById('chat-status');
 
 
     // Status Icons
@@ -2978,62 +2772,10 @@
       console.log('Initializing enhanced UI...');
 
       // Event Listeners
-      saveKeyButton.addEventListener('click', handleSaveApiKey);
       runCtdsAuditButton.addEventListener('click', handleAnalyzeSystem);
-      apiKeyInput.addEventListener('input', handleApiKeyChange);
-      apiKeyInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && apiKeyInput.value.trim()) {
-          handleSaveApiKey();
-        }
-      });
-
-      // Provider selection handling
-      if (providerSelect) {
-        providerSelect.addEventListener('change', handleProviderChange);
-      }
-
-      // Model selection handling
-      modelSelect.addEventListener('change', handleModelChange);
-
-      if (clearApiKeyLink) {
-        clearApiKeyLink.addEventListener('click', handleClearApiKey);
-      }
-
-      // Removed batch mode and config visibility toggles (Component Audit removed)
-
-      // Removed: Export functionality (Component Audit removed)
-
-      // Playground and documentation buttons (with null checks)
-      if (generatePlaygroundButton) {
-        generatePlaygroundButton.addEventListener('click', handleGeneratePlayground);
-      }
-      if (exportDocsButton) {
-        exportDocsButton.addEventListener('click', handleExportDocs);
-      }
-      if (generateDocsFrameButton) {
-        generateDocsFrameButton.addEventListener('click', handleGenerateDocsFrame);
-      }
-      if (saveNotesButton) {
-        saveNotesButton.addEventListener('click', handleSaveNotes);
-      }
-
-      // Chat Event Listeners
-      if (sendChatButton) {
-        sendChatButton.addEventListener('click', handleSendChat);
-      }
-      if (clearChatButton) {
-        clearChatButton.addEventListener('click', handleClearChat);
-      }
-      if (chatInput) {
-        chatInput.addEventListener('keydown', handleChatKeydown);
-        chatInput.addEventListener('input', handleChatInputChange);
-      }
 
       // Listen for messages from plugin
       window.addEventListener('message', handlePluginMessage);
-
-      // Request current API key status
-      sendMessageToPlugin('check-api-key', {});
     }
 
     // Handle Export Metadata
@@ -3326,7 +3068,7 @@
 
       // --- Footer ---
       content += `---\n\n`;
-      content += `*Generated by FigmaLint — ${new Date().toLocaleDateString()}*\n`;
+      content += `*Generated by ctdsLint — ${new Date().toLocaleDateString()}*\n`;
 
       return content;
     }
@@ -3505,7 +3247,7 @@
       }
 
       prompt += `\n---\n\n`;
-      prompt += `*Generated by FigmaLint — ${new Date().toLocaleDateString()}*\n`;
+      prompt += `*Generated by ctdsLint — ${new Date().toLocaleDateString()}*\n`;
 
       return prompt;
     }
@@ -3597,104 +3339,6 @@
     })();
 
     // Handle API Key Changes
-    function handleApiKeyChange() {
-      const hasApiKey = apiKeyInput.value.trim().length > 0;
-      if (hasApiKey && apiKeySaved) {
-        updateAnalyzeButtonState(true);
-      }
-    }
-
-    // Handle Provider Change
-    function handleProviderChange() {
-      const selectedProvider = providerSelect.value;
-      const config = providerConfig[selectedProvider];
-
-      if (!config) return;
-
-      // Store current provider's API key before switching
-      if (apiKeyInput.value.trim()) {
-        providerApiKeys[currentProvider] = apiKeyInput.value.trim();
-      }
-
-      // Update current provider
-      currentProvider = selectedProvider;
-
-      // Update UI labels
-      if (apiKeyLabel) apiKeyLabel.textContent = config.name;
-      if (modelLabel) modelLabel.textContent = config.name;
-      if (apiKeyHint) apiKeyHint.textContent = config.hint;
-      apiKeyInput.placeholder = config.placeholder;
-
-      // Restore saved API key for this provider (if any)
-      apiKeyInput.value = providerApiKeys[selectedProvider] || '';
-
-      // Update model dropdown — disable options not belonging to selected provider
-      const providerGroups = {
-        anthropic: document.getElementById('anthropic-models'),
-        openai: document.getElementById('openai-models'),
-        google: document.getElementById('google-models')
-      };
-
-      Object.entries(providerGroups).forEach(([key, group]) => {
-        if (!group) return;
-        const isActive = key === selectedProvider;
-        group.style.display = isActive ? '' : 'none';
-        // Disable hidden options so they can't be selected
-        Array.from(group.querySelectorAll('option')).forEach(opt => {
-          opt.disabled = !isActive;
-        });
-      });
-
-      // Select default model for this provider
-      modelSelect.value = config.defaultModel;
-
-      // Update button state based on whether we have a key for this provider
-      const hasKey = apiKeyInput.value.trim().length > 0;
-      updateAnalyzeButtonState(hasKey && apiKeySaved);
-
-      console.log('Provider changed to:', selectedProvider, 'Model:', config.defaultModel);
-    }
-
-    // Handle Save API Key
-    function handleSaveApiKey() {
-      const apiKey = apiKeyInput.value.trim();
-      const selectedModel = modelSelect.value;
-      const selectedProvider = providerSelect ? providerSelect.value : 'anthropic';
-
-      if (!apiKey) {
-        updateStatus('Please enter an API key', 'error');
-        return;
-      }
-
-      // Store key for this provider
-      providerApiKeys[selectedProvider] = apiKey;
-
-      saveKeyButton.disabled = true;
-      updateStatus(`Saving ${providerConfig[selectedProvider]?.name || 'API'} key...`, 'info');
-      sendMessageToPlugin('save-api-key', {
-        apiKey,
-        model: selectedModel,
-        provider: selectedProvider
-      });
-    }
-
-    // Handle Model Change
-    function handleModelChange() {
-      const selectedModel = modelSelect.value;
-      console.log('Model changed to:', selectedModel);
-
-      // If API key is saved, update the model immediately
-      if (apiKeySaved) {
-        sendMessageToPlugin('update-model', { model: selectedModel });
-        // Get the display name from the selected option text
-        const selectedOption = modelSelect.options[modelSelect.selectedIndex];
-        const displayName = selectedOption ? selectedOption.textContent.trim() : selectedModel;
-        updateStatus(`Model updated to ${displayName}`, 'success');
-      }
-    }
-
-    // Removed: handleAnalyzeComponent (Component Audit removed)
-
     // Handle CTDS Audit
     function handleAnalyzeSystem() {
       updateStatus('Running CTDS audit...', 'info');
@@ -3710,30 +3354,6 @@
       `;
 
       sendMessageToPlugin('analyze-system', {});
-    }
-
-    // Handle Clear API Key
-    function handleClearApiKey(e) {
-      e.preventDefault();
-      if (confirm('Are you sure you want to clear the saved API key?')) {
-        sendMessageToPlugin('clear-api-key', {});
-        apiKeyInput.value = '';
-        apiKeyInput.placeholder = 'sk-ant-...';
-        clearApiKeyLink.classList.add('hidden');
-        apiKeySaved = false;
-        updateStatus('API key cleared', 'info');
-
-        // Expand the chat configuration section so user can enter new key
-        const chatConfigHeader = document.querySelector('#api-key-card-chat .collapsible-header');
-        const chatConfigContent = document.querySelector('#api-key-card-chat .collapsible-content');
-        if (chatConfigHeader && chatConfigContent) {
-          chatConfigHeader.classList.add('active');
-          chatConfigContent.classList.add('active');
-        }
-
-        // Update chat input state
-        updateChatInputState();
-      }
     }
 
     // Handle Batch Mode Toggle
@@ -3810,12 +3430,6 @@
       const { type, data } = event.data.pluginMessage || {};
 
       switch (type) {
-        case 'api-key-saved':
-          handleApiKeySaved(data.success, data.provider);
-          break;
-        case 'api-key-status':
-          handleApiKeyStatus(data.hasKey, data.provider, data.model);
-          break;
         case 'enhanced-analysis-result':
           handleEnhancedAnalysisResult(data);
           break;
@@ -3883,18 +3497,6 @@
             updateStatus(`Failed to rename layer: ${data.error}`, 'error');
           }
           break;
-        case 'chat-response':
-          handleChatResponse(data.response);
-          break;
-        case 'chat-response-loading':
-          handleChatLoading(data.isLoading);
-          break;
-        case 'chat-error':
-          handleChatError(data.error);
-          break;
-        case 'chat-history-cleared':
-          handleChatHistoryCleared();
-          break;
         case 'fix-preview':
           handleFixPreview(data);
           break;
@@ -3913,86 +3515,6 @@
     }
 
     // Handle API Key Saved
-    function handleApiKeySaved(success, provider) {
-      saveKeyButton.disabled = false;
-      if (success) {
-        // Ensure UI provider state matches what was saved
-        if (provider && providerSelect && providerSelect.value !== provider) {
-          providerSelect.value = provider;
-          handleProviderChange();
-        }
-        apiKeySaved = true;
-        updateStatus('API key saved successfully!', 'success');
-        clearApiKeyLink.classList.remove('hidden');
-        apiKeyInput.value = '';
-        apiKeyInput.placeholder = 'API key saved ✓';
-
-        // Collapse the chat configuration section
-        const chatConfigHeader = document.querySelector('#api-key-card-chat .collapsible-header');
-        const chatConfigContent = document.querySelector('#api-key-card-chat .collapsible-content');
-        if (chatConfigHeader && chatConfigContent) {
-          chatConfigHeader.classList.remove('active');
-          chatConfigContent.classList.remove('active');
-        }
-
-        // Update chat input state
-        updateChatInputState();
-      } else {
-        updateStatus('Failed to save API key', 'error');
-      }
-    }
-
-    // Handle API Key Status
-    function handleApiKeyStatus(hasKey, provider, model) {
-      apiKeySaved = hasKey;
-
-      // Restore saved provider and model selections
-      if (provider && providerSelect) {
-        providerSelect.value = provider;
-        // Trigger provider change to update labels, model visibility, etc.
-        handleProviderChange();
-      }
-      if (model && modelSelect) {
-        modelSelect.value = model;
-      }
-
-      if (hasKey) {
-        updateStatus('API key is configured', 'success');
-        clearApiKeyLink.classList.remove('hidden');
-        apiKeyInput.placeholder = 'API key saved ✓';
-
-        // Collapse the chat configuration section
-        const chatConfigHeader = document.querySelector('#api-key-card-chat .collapsible-header');
-        const chatConfigContent = document.querySelector('#api-key-card-chat .collapsible-content');
-        if (chatConfigHeader && chatConfigContent) {
-          chatConfigHeader.classList.remove('active');
-          chatConfigContent.classList.remove('active');
-        }
-
-        // Enable chat tab
-        const chatTabButton = document.getElementById('tab-chat');
-        if (chatTabButton) {
-          chatTabButton.disabled = false;
-        }
-      } else {
-        updateStatus('Enter API key to get started', 'info');
-        updateAnalyzeButtonState(false);
-        clearApiKeyLink.classList.add('hidden');
-
-        // Disable chat tab and switch back to analyze if currently on chat
-        const chatTabButton = document.getElementById('tab-chat');
-        if (chatTabButton) {
-          chatTabButton.disabled = true;
-          if (currentTab === 'chat') {
-            switchTab('analyze');
-          }
-        }
-      }
-
-      // Update chat input state
-      updateChatInputState();
-    }
-
     // Handle System Audit Result (CTDS Audit)
     function handleSystemAuditResult(data) {
       console.log('UI received system audit result:', data);
@@ -6000,104 +5522,6 @@
     // ==================== CHAT FUNCTIONALITY ====================
 
     // Chat Event Handlers
-    function handleSendChat() {
-      if (isWaitingForResponse) return;
-
-      const message = chatInput.value.trim();
-      if (!message) return;
-
-      // Check API key
-      if (!apiKeySaved) {
-        updateStatus('Please save your Claude API key first', 'error');
-        return;
-      }
-
-      // Hide empty state on first message
-      if (chatEmpty && !chatEmpty.classList.contains('hidden')) {
-        chatEmpty.classList.add('hidden');
-      }
-
-      // Add user message to chat
-      addChatMessage('user', message);
-
-      // Clear input and disable
-      chatInput.value = '';
-      chatInput.disabled = true;
-      sendChatButton.disabled = true;
-      isWaitingForResponse = true;
-
-      // Show loading state
-      showChatLoading(true);
-
-      // Send to plugin
-      sendMessageToPlugin('chat-message', {
-        message: message,
-        history: chatHistory
-      });
-    }
-
-    function handleClearChat() {
-      if (confirm('Clear chat history?')) {
-        sendMessageToPlugin('chat-clear-history', {});
-      }
-    }
-
-    function handleChatKeydown(event) {
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        handleSendChat();
-      }
-    }
-
-    function handleChatInputChange() {
-      // Auto-resize textarea
-      chatInput.style.height = 'auto';
-      chatInput.style.height = chatInput.scrollHeight + 'px';
-    }
-
-    // Chat Message Handlers
-    function handleChatResponse(response) {
-      showChatLoading(false);
-
-      if (response && response.message) {
-        addChatMessage('assistant', response.message, response.sources);
-      }
-
-      // Re-enable input
-      chatInput.disabled = false;
-      sendChatButton.disabled = false;
-      isWaitingForResponse = false;
-      chatInput.focus();
-    }
-
-    function handleChatLoading(isLoading) {
-      showChatLoading(isLoading);
-    }
-
-    function handleChatError(error) {
-      showChatLoading(false);
-
-      addChatMessage('assistant', `Sorry, I encountered an error: ${error}`);
-
-      // Re-enable input
-      chatInput.disabled = false;
-      sendChatButton.disabled = false;
-      isWaitingForResponse = false;
-      chatInput.focus();
-    }
-
-    function handleChatHistoryCleared() {
-      chatHistory = [];
-      // Remove all message elements, keep only the empty state
-      const messages = chatMessages.querySelectorAll('.chat-message');
-      messages.forEach(msg => msg.remove());
-      // Show empty state again
-      if (chatEmpty) {
-        chatEmpty.classList.remove('hidden');
-      }
-      updateChatComponentContext();
-      updateStatus('Chat history cleared', 'success');
-    }
 
     // Handle fix preview response
     function handleFixPreview(data) {
@@ -6552,286 +5976,6 @@
     }
 
     // Chat UI Functions
-    function addChatMessage(role, content, sources = null) {
-      const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-
-      const message = {
-        id: messageId,
-        role: role,
-        content: content,
-        timestamp: Date.now(),
-        sources: sources
-      };
-
-      chatHistory.push(message);
-
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `chat-message ${role}`;
-      messageDiv.dataset.messageId = messageId;
-
-      let messageHTML = `
-        <div class="chat-message-content">${formatChatContent(content)}</div>
-        <div class="chat-message-meta">
-          <span>${formatTimestamp(message.timestamp)}</span>
-        </div>
-      `;
-
-      // Add sources if available
-      if (sources && sources.length > 0) {
-        // Filter out empty or duplicate sources
-        const validSources = sources.filter(source =>
-          source &&
-          source.title &&
-          source.content &&
-          source.title.trim() !== '' &&
-          source.content.trim() !== ''
-        );
-
-        // Remove duplicates based on title
-        const uniqueSources = validSources.filter((source, index, arr) =>
-          arr.findIndex(s => s.title === source.title) === index
-        );
-
-        if (uniqueSources.length > 0) {
-          messageHTML += `
-            <div class="chat-sources">
-              <div class="chat-sources-title">
-                Sources
-              </div>
-              ${uniqueSources.map(source => `
-                <div class="chat-source">
-                  <div class="chat-source-title">${source.title}</div>
-                  <div class="chat-source-content">${source.content.substring(0, 150)}${source.content.length > 150 ? '...' : ''}</div>
-                </div>
-              `).join('')}
-            </div>
-          `;
-        }
-      }
-
-      messageDiv.innerHTML = messageHTML;
-      chatMessages.appendChild(messageDiv);
-
-      // User messages: scroll to bottom so they see their sent message
-      // Assistant messages: scroll to the top of the new message so they can read from the start
-      if (role === 'user') {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      } else {
-        messageDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-
-    function showChatLoading(isLoading) {
-      // Always remove existing loading indicator first
-      const existingLoading = document.getElementById('chat-loading');
-      if (existingLoading) {
-        existingLoading.remove();
-      }
-
-      if (isLoading) {
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'chat-message assistant';
-        loadingDiv.id = 'chat-loading';
-        loadingDiv.innerHTML = `
-          <div class="chat-message-content">
-            <div class="loading-dots">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        `;
-        chatMessages.appendChild(loadingDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
-    }
-
-    function formatChatContent(content) {
-      // Robust markdown-to-HTML converter for chat messages
-      const lines = content.split('\n');
-      const htmlLines = [];
-      let currentBlock = null;      // 'paragraph' | 'ol' | 'ul' | 'code'
-      let currentBlockContent = [];
-      let codeLanguage = '';
-
-      const closeCurrentBlock = () => {
-        if (currentBlock === 'paragraph' && currentBlockContent.length > 0) {
-          htmlLines.push(`<p>${currentBlockContent.join(' ')}</p>`);
-        } else if (currentBlock === 'ol') {
-          htmlLines.push('</ol>');
-        } else if (currentBlock === 'ul') {
-          htmlLines.push('</ul>');
-        } else if (currentBlock === 'code') {
-          htmlLines.push(`<pre><code>${currentBlockContent.join('\n')}</code></pre>`);
-        }
-        currentBlock = null;
-        currentBlockContent = [];
-        codeLanguage = '';
-      };
-
-      function processInlineMarkdown(text) {
-        return text
-          .replace(/`([^`]+)`/g, '<code>$1</code>')
-          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-          .replace(/(\s|^)\*([^*\s][^*]*)\*(\s|$)/g, '$1<em>$2</em>$3');
-      }
-
-      function escapeCodeHtml(text) {
-        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      }
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const trimmedLine = line.trim();
-
-        // Fenced code blocks
-        if (trimmedLine.startsWith('```')) {
-          if (currentBlock === 'code') {
-            closeCurrentBlock();
-          } else {
-            closeCurrentBlock();
-            currentBlock = 'code';
-            codeLanguage = trimmedLine.slice(3).trim();
-            currentBlockContent = [];
-          }
-          continue;
-        }
-        if (currentBlock === 'code') {
-          currentBlockContent.push(escapeCodeHtml(line));
-          continue;
-        }
-
-        // Empty line — close current block
-        if (trimmedLine === '') {
-          closeCurrentBlock();
-          continue;
-        }
-
-        // Horizontal rule
-        if (/^[-*_]{3,}$/.test(trimmedLine)) {
-          closeCurrentBlock();
-          htmlLines.push('<hr>');
-          continue;
-        }
-
-        // Headers
-        const headerMatch = line.match(/^(#{1,6})\s+(.+)$/);
-        if (headerMatch) {
-          closeCurrentBlock();
-          const level = Math.min(headerMatch[1].length + 1, 6);
-          htmlLines.push(`<h${level}>${processInlineMarkdown(headerMatch[2])}</h${level}>`);
-          continue;
-        }
-
-        // Ordered list item (any indent level)
-        const orderedMatch = line.match(/^(\s*)(\d+)[.)]\s+(.+)$/);
-        if (orderedMatch) {
-          const itemContent = orderedMatch[3];
-          const indent = orderedMatch[1].length;
-
-          if (currentBlock === 'ol') {
-            // Continue existing ordered list
-            htmlLines.push(`<li>${processInlineMarkdown(itemContent)}</li>`);
-          } else {
-            closeCurrentBlock();
-            htmlLines.push('<ol>');
-            currentBlock = 'ol';
-            htmlLines.push(`<li>${processInlineMarkdown(itemContent)}</li>`);
-          }
-          continue;
-        }
-
-        // Unordered list item: -, *, or + at any indent level
-        const unorderedMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
-        if (unorderedMatch) {
-          const itemContent = unorderedMatch[2];
-
-          if (currentBlock === 'ul') {
-            // Continue existing unordered list
-            htmlLines.push(`<li>${processInlineMarkdown(itemContent)}</li>`);
-          } else {
-            closeCurrentBlock();
-            htmlLines.push('<ul>');
-            currentBlock = 'ul';
-            htmlLines.push(`<li>${processInlineMarkdown(itemContent)}</li>`);
-          }
-          continue;
-        }
-
-        // Regular paragraph text
-        if (currentBlock !== 'paragraph') {
-          closeCurrentBlock();
-          currentBlock = 'paragraph';
-        }
-        currentBlockContent.push(processInlineMarkdown(trimmedLine));
-      }
-
-      closeCurrentBlock();
-
-      return '<div class="chat-article">' + htmlLines.join('\n') + '</div>';
-    }
-
-    function formatTimestamp(timestamp) {
-      const date = new Date(timestamp);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    // Update chat input state based on API key
-    function updateChatInputState() {
-      if (chatInput && sendChatButton) {
-        chatInput.disabled = !apiKeySaved;
-        sendChatButton.disabled = !apiKeySaved;
-
-        if (apiKeySaved) {
-          chatInput.placeholder = "Ask about design systems, components, tokens, or best practices...";
-        } else {
-          chatInput.placeholder = "Save your Claude API key first to start chatting...";
-        }
-      }
-    }
-
-    // Update chat component context display
-    function updateChatComponentContext() {
-      const contextIndicator = document.getElementById('component-context-indicator');
-      const componentInfo = document.getElementById('current-component-info');
-      const chatSuggestions = document.getElementById('chat-suggestions');
-
-      if (!contextIndicator || !componentInfo || !chatSuggestions) return;
-
-      // Check if we have current component metadata
-      const hasComponent = currentMetadata !== null;
-
-      if (hasComponent && currentMetadata) {
-        // Show component context
-        contextIndicator.classList.remove('hidden');
-        componentInfo.innerHTML = `Currently analyzing: <strong>${currentMetadata.component}</strong>`;
-
-        // Update suggestions for component-specific questions
-        chatSuggestions.innerHTML = `
-          <button class="chat-suggestion" onclick="sendChatSuggestion('What issues does this component have?')">Issues</button>
-          <button class="chat-suggestion" onclick="sendChatSuggestion('How can I improve this component?')">Improvements</button>
-          <button class="chat-suggestion" onclick="sendChatSuggestion('What design tokens should I use?')">Tokens</button>
-          <button class="chat-suggestion" onclick="sendChatSuggestion('Is this component accessible?')">Accessibility</button>
-        `;
-      } else {
-        // Hide component context and show general suggestions
-        contextIndicator.classList.add('hidden');
-        chatSuggestions.innerHTML = `
-          <button class="chat-suggestion" onclick="sendChatSuggestion('What are design system best practices?')">Best Practices</button>
-          <button class="chat-suggestion" onclick="sendChatSuggestion('How do I organize design tokens?')">Tokens</button>
-          <button class="chat-suggestion" onclick="sendChatSuggestion('What makes a good component API?')">Components</button>
-          <button class="chat-suggestion" onclick="sendChatSuggestion('How do I ensure accessibility?')">Accessibility</button>
-        `;
-      }
-    }
-
-    // Send chat suggestion
-    window.sendChatSuggestion = function(suggestion) {
-      if (chatInput) {
-        chatInput.value = suggestion;
-        handleSendChat();
-      }
-    };
 
     // Initialize when DOM is loaded
     if (document.readyState === 'loading') {

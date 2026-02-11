@@ -42,8 +42,7 @@
       namePattern: /primitives?/i,
       displayName: "Primitives",
       requiredCategories: [
-        { name: "color" },
-        { name: "space" }
+        { name: "color" }
       ]
     },
     {
@@ -2340,8 +2339,12 @@ ${scoringCriteria}
   };
   async function checkLegacyMigration() {
     try {
-      const legacyKey = await figma.clientStorage.getAsync(STORAGE_KEYS.LEGACY_CLAUDE_KEY);
-      const legacyModel = await figma.clientStorage.getAsync(STORAGE_KEYS.LEGACY_CLAUDE_MODEL);
+      const legacyKeyClient = await figma.clientStorage.getAsync(STORAGE_KEYS.LEGACY_CLAUDE_KEY);
+      const legacyKeyRoot = figma.root.getPluginData(STORAGE_KEYS.LEGACY_CLAUDE_KEY);
+      const legacyKey = legacyKeyClient || legacyKeyRoot;
+      const legacyModelClient = await figma.clientStorage.getAsync(STORAGE_KEYS.LEGACY_CLAUDE_MODEL);
+      const legacyModelRoot = figma.root.getPluginData(STORAGE_KEYS.LEGACY_CLAUDE_MODEL);
+      const legacyModel = legacyModelClient || legacyModelRoot;
       if (legacyKey) {
         return {
           needsMigration: true,
@@ -2361,32 +2364,34 @@ ${scoringCriteria}
     }
     console.log("Migrating legacy Claude storage to multi-provider format...");
     if (migration.legacyKey) {
-      await figma.clientStorage.setAsync(STORAGE_KEYS.apiKey("anthropic"), migration.legacyKey);
+      figma.root.setPluginData(STORAGE_KEYS.apiKey("anthropic"), migration.legacyKey);
     }
-    await figma.clientStorage.setAsync(STORAGE_KEYS.SELECTED_PROVIDER, "anthropic");
+    figma.root.setPluginData(STORAGE_KEYS.SELECTED_PROVIDER, "anthropic");
     if (migration.legacyModel) {
-      await figma.clientStorage.setAsync(STORAGE_KEYS.SELECTED_MODEL, migration.legacyModel);
+      figma.root.setPluginData(STORAGE_KEYS.SELECTED_MODEL, migration.legacyModel);
     }
     await figma.clientStorage.deleteAsync(STORAGE_KEYS.LEGACY_CLAUDE_KEY);
     await figma.clientStorage.deleteAsync(STORAGE_KEYS.LEGACY_CLAUDE_MODEL);
+    figma.root.setPluginData(STORAGE_KEYS.LEGACY_CLAUDE_KEY, "");
+    figma.root.setPluginData(STORAGE_KEYS.LEGACY_CLAUDE_MODEL, "");
     console.log("Migration complete");
   }
   async function loadProviderConfig() {
     await migrateLegacyStorage();
-    const providerId = await figma.clientStorage.getAsync(STORAGE_KEYS.SELECTED_PROVIDER) || DEFAULTS.provider;
-    const modelId = await figma.clientStorage.getAsync(STORAGE_KEYS.SELECTED_MODEL) || DEFAULT_MODELS[providerId];
-    const apiKey = await figma.clientStorage.getAsync(STORAGE_KEYS.apiKey(providerId));
+    const providerId = figma.root.getPluginData(STORAGE_KEYS.SELECTED_PROVIDER) || DEFAULTS.provider;
+    const modelId = figma.root.getPluginData(STORAGE_KEYS.SELECTED_MODEL) || DEFAULT_MODELS[providerId];
+    const apiKey = figma.root.getPluginData(STORAGE_KEYS.apiKey(providerId)) || null;
     return { providerId, modelId, apiKey };
   }
   async function saveProviderConfig(providerId, modelId, apiKey) {
-    await figma.clientStorage.setAsync(STORAGE_KEYS.SELECTED_PROVIDER, providerId);
-    await figma.clientStorage.setAsync(STORAGE_KEYS.SELECTED_MODEL, modelId);
+    figma.root.setPluginData(STORAGE_KEYS.SELECTED_PROVIDER, providerId);
+    figma.root.setPluginData(STORAGE_KEYS.SELECTED_MODEL, modelId);
     if (apiKey !== void 0) {
-      await figma.clientStorage.setAsync(STORAGE_KEYS.apiKey(providerId), apiKey);
+      figma.root.setPluginData(STORAGE_KEYS.apiKey(providerId), apiKey);
     }
   }
   async function clearProviderKey(providerId) {
-    await figma.clientStorage.deleteAsync(STORAGE_KEYS.apiKey(providerId));
+    figma.root.setPluginData(STORAGE_KEYS.apiKey(providerId), "");
   }
 
   // src/fixes/token-fixer.ts
@@ -3480,7 +3485,6 @@ ${scoringCriteria}
     try {
       storedApiKey = null;
       await clearProviderKey(selectedProvider);
-      await figma.clientStorage.setAsync("claude-api-key", "");
       const providerName = getProvider(selectedProvider).name;
       sendMessageToUI("api-key-cleared", { success: true });
       figma.notify(`${providerName} API key cleared`, { timeout: 2e3 });
