@@ -3652,11 +3652,11 @@
                 ${hasLongSuggestion ? `<span class="collapsible-icon" id="icon-${itemId}" style="font-size: 10px; margin-left: 8px;">▼</span>` : ''}
               </div>
               ${item.suggestion && hasLongSuggestion ? `
-                <div id="${itemId}" class="audit-detail" style="display: none; margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); width: 100%; box-sizing: border-box;">
+                <div id="${itemId}" class="audit-detail" style="display: none; margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); width: 100%; box-sizing: border-box; white-space: pre-line;">
                   ${item.suggestion}
                 </div>
               ` : item.suggestion && !hasLongSuggestion ? `
-                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">${item.suggestion}</div>
+                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary); white-space: pre-line;">${item.suggestion}</div>
               ` : ''}
             </div>
           `;
@@ -3695,11 +3695,11 @@
                 ${hasLongSuggestion ? `<span class="collapsible-icon" id="icon-${itemId}" style="font-size: 10px; margin-left: 8px;">▼</span>` : ''}
               </div>
               ${item.suggestion && hasLongSuggestion ? `
-                <div id="${itemId}" class="audit-detail" style="display: none; margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); width: 100%; box-sizing: border-box;">
+                <div id="${itemId}" class="audit-detail" style="display: none; margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); width: 100%; box-sizing: border-box; white-space: pre-line;">
                   ${item.suggestion}
                 </div>
               ` : item.suggestion && !hasLongSuggestion ? `
-                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">${item.suggestion}</div>
+                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary); white-space: pre-line;">${item.suggestion}</div>
               ` : ''}
             </div>
           `;
@@ -3738,11 +3738,11 @@
                 ${hasLongSuggestion ? `<span class="collapsible-icon" id="icon-${itemId}" style="font-size: 10px; margin-left: 8px;">▼</span>` : ''}
               </div>
               ${item.suggestion && hasLongSuggestion ? `
-                <div id="${itemId}" class="audit-detail" style="display: none; margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); width: 100%; box-sizing: border-box;">
+                <div id="${itemId}" class="audit-detail" style="display: none; margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); width: 100%; box-sizing: border-box; white-space: pre-line;">
                   ${item.suggestion}
                 </div>
               ` : item.suggestion && !hasLongSuggestion ? `
-                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary);">${item.suggestion}</div>
+                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary); white-space: pre-line;">${item.suggestion}</div>
               ` : ''}
             </div>
           `;

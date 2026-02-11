@@ -1011,9 +1011,8 @@ export async function validateTextStyleBindings(): Promise<{
     const bindingIssues = stylesWithIssues.filter(s => s.incorrectBindings.length > 0);
     
     if (unboundIssues.length > 0) {
-      // Report unbound properties with detailed examples
-      const sampleIssues = unboundIssues.slice(0, 3);
-      const issueDescriptions = sampleIssues.map(s => {
+      // Report ALL unbound properties with detailed suggestions
+      const issueDescriptions = unboundIssues.map(s => {
         const propsDetail = s.unboundProps.map(prop => {
           // Provide helpful suggestion for each property
           const style = results.find(r => r.styleName === s.styleName);
@@ -1022,45 +1021,44 @@ export async function validateTextStyleBindings(): Promise<{
             const size = style.size;
             switch (prop) {
               case 'fontFamily':
-                return `${prop} (bind to font-family/${category})`;
+                return `${prop} → font-family/${category}`;
               case 'fontSize':
-                return `${prop} (bind to font-size/${category}/${size})`;
+                return `${prop} → font-size/${category}/${size}`;
               case 'fontWeight':
-                return `${prop} (bind to font-weight/${category}/...)`;
+                return `${prop} → font-weight/${category}/...`;
               case 'lineHeight':
-                return `${prop} (bind to line-height/${category}/${size})`;
+                return `${prop} → line-height/${category}/${size}`;
               case 'letterSpacing':
-                return `${prop} (bind to letter-spacing/${category}/${size})`;
+                return `${prop} → letter-spacing/${category}/${size}`;
               default:
                 return prop;
             }
           }
           return prop;
         });
-        return `"${s.styleName}": ${propsDetail.join(', ')}`;
+        return `• "${s.styleName}": ${propsDetail.join(', ')}`;
       });
 
       auditChecks.push({
         check: 'Text style variable bindings',
         status: 'warning',
-        suggestion: `${unboundIssues.length} text style(s) have raw values instead of theme variables. Examples: ${issueDescriptions.join(' | ')}${unboundIssues.length > 3 ? ` | +${unboundIssues.length - 3} more` : ''}. Bind each typography property to its corresponding variable.`
+        suggestion: `${unboundIssues.length} text style(s) have raw values instead of theme variables:\n\n${issueDescriptions.join('\n')}\n\nBind each typography property to its corresponding variable.`
       });
     }
 
     if (bindingIssues.length > 0) {
-      // Report incorrect bindings with detailed examples
-      const sampleIssues = bindingIssues.slice(0, 2);
-      const issueDescriptions = sampleIssues.map(s => {
-        const examples = s.incorrectBindings.slice(0, 2).map(b =>
-          `${b.prop}: "${b.actual}" → should be "${b.expected}"`
+      // Report ALL incorrect bindings with detailed suggestions
+      const issueDescriptions = bindingIssues.map(s => {
+        const examples = s.incorrectBindings.map(b =>
+          `${b.prop}: "${b.actual}" → "${b.expected}"`
         );
-        return `"${s.styleName}": ${examples.join(', ')}`;
+        return `• "${s.styleName}": ${examples.join(', ')}`;
       });
 
       auditChecks.push({
         check: 'Text style variable naming',
         status: 'warning',
-        suggestion: `${bindingIssues.length} text style(s) use incorrectly named variables. Examples: ${issueDescriptions.join(' | ')}${bindingIssues.length > 2 ? ` | +${bindingIssues.length - 2} more` : ''}. Update variable names to match the expected pattern.`
+        suggestion: `${bindingIssues.length} text style(s) use incorrectly named variables:\n\n${issueDescriptions.join('\n')}\n\nUpdate variable names to match the expected pattern.`
       });
     }
 
