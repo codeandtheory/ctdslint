@@ -523,7 +523,7 @@
                 break;
               case "fontSize":
                 expectedPattern = `font-size/${size}`;
-                isCorrectBinding = variableName.includes("font-size") && variableName.endsWith(size);
+                isCorrectBinding = variableName.includes("font-size") && (variableName.endsWith(size) || variableName.includes(`/${size}`));
                 break;
               case "fontWeight":
                 expectedPattern = `font-weight/*`;
@@ -531,11 +531,11 @@
                 break;
               case "letterSpacing":
                 expectedPattern = `letter-spacing/${size}`;
-                isCorrectBinding = variableName.includes("letter-spacing") && variableName.endsWith(size);
+                isCorrectBinding = variableName.includes("letter-spacing") && (variableName.endsWith(size) || variableName.includes(`/${size}`));
                 break;
               case "lineHeight":
                 expectedPattern = `line-height/${size}`;
-                isCorrectBinding = variableName.includes("line-height") && variableName.endsWith(size);
+                isCorrectBinding = variableName.includes("line-height") && (variableName.endsWith(size) || variableName.includes(`/${size}`));
                 break;
               default:
                 expectedPattern = "";

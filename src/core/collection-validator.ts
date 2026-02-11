@@ -911,33 +911,33 @@ export async function validateTextStyleBindings(): Promise<{
           
           switch (prop) {
             case 'fontFamily':
-              // font-family should be "font-family/{category}"
+              // font-family should include the category, can have modifiers like "body-bold"
               expectedPattern = `font-family/${category}`;
-              isCorrectBinding = variableName.includes('font-family') && 
+              isCorrectBinding = variableName.includes('font-family') &&
                                  variableName.includes(category);
               break;
             case 'fontSize':
-              // font-size should be "font-size/{size}"
+              // font-size can be "font-size/{size}" or "font-size/{category}/{size}"
               expectedPattern = `font-size/${size}`;
-              isCorrectBinding = variableName.includes('font-size') && 
-                                 variableName.endsWith(size);
+              isCorrectBinding = variableName.includes('font-size') &&
+                                 (variableName.endsWith(size) || variableName.includes(`/${size}`));
               break;
             case 'fontWeight':
-              // font-weight is more flexible, just needs to be a font-weight variable
+              // font-weight is flexible, just needs to be a font-weight variable
               expectedPattern = `font-weight/*`;
               isCorrectBinding = variableName.includes('font-weight');
               break;
             case 'letterSpacing':
-              // letter-spacing should be "letter-spacing/{size}"
+              // letter-spacing can be "letter-spacing/{size}" or "letter-spacing/{category}/{size}"
               expectedPattern = `letter-spacing/${size}`;
-              isCorrectBinding = variableName.includes('letter-spacing') && 
-                                 variableName.endsWith(size);
+              isCorrectBinding = variableName.includes('letter-spacing') &&
+                                 (variableName.endsWith(size) || variableName.includes(`/${size}`));
               break;
             case 'lineHeight':
-              // line-height should be "line-height/{size}"
+              // line-height can be "line-height/{size}" or "line-height/{category}/{size}"
               expectedPattern = `line-height/${size}`;
-              isCorrectBinding = variableName.includes('line-height') && 
-                                 variableName.endsWith(size);
+              isCorrectBinding = variableName.includes('line-height') &&
+                                 (variableName.endsWith(size) || variableName.includes(`/${size}`));
               break;
             default:
               expectedPattern = '';
