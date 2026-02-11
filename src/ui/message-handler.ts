@@ -99,15 +99,10 @@ export async function handleUIMessage(msg: PluginMessage): Promise<void> {
       case 'update-model':
         await handleUpdateModel(data.model);
         break;
-      case 'analyze':
-        await handleAnalyzeComponent();
-        break;
-      case 'analyze-enhanced':
-        await handleEnhancedAnalyze(data);
-        break;
       case 'analyze-system':
         await handleSystemAudit();
         break;
+      // Removed: 'analyze' and 'analyze-enhanced' (Component Audit removed)
       case 'clear-api-key':
         await handleClearApiKey();
         break;
@@ -345,7 +340,9 @@ async function handleSystemAudit(): Promise<void> {
 
 /**
  * Enhanced component analysis with consistency engine
+ * REMOVED: Component Audit feature removed - keeping function for reference only
  */
+/*
 async function handleEnhancedAnalyze(options: EnhancedAnalysisOptions): Promise<void> {
   try {
     // Check API key
@@ -496,17 +493,11 @@ async function handleEnhancedAnalyze(options: EnhancedAnalysisOptions): Promise<
   }
 }
 
-/**
- * Basic component analysis (legacy support)
- */
-async function handleAnalyzeComponent(): Promise<void> {
-  // For backward compatibility, call enhanced analyze
-  await handleEnhancedAnalyze({ batchMode: false });
-}
+// Removed: handleAnalyzeComponent (Component Audit removed)
+*/
 
-/**
- * Handle batch analysis of multiple components with consistency
- */
+// Removed: handleBatchAnalysis (Component Audit removed)
+/*
 async function handleBatchAnalysis(nodes: readonly SceneNode[], _options: EnhancedAnalysisOptions): Promise<void> {
   const results = [];
 
@@ -590,6 +581,7 @@ async function handleBatchAnalysis(nodes: readonly SceneNode[], _options: Enhanc
   sendMessageToUI('batch-analysis-result', { results });
   figma.notify(`Batch analysis complete: ${analyzedCount} analyzed, ${cachedCount} from cache`, { timeout: 3000 });
 }
+*/
 
 
 async function handleClearApiKey(): Promise<void> {
