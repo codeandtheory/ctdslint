@@ -40,6 +40,12 @@ function computeStructuralMetrics(root: LintNode): StructuralMetrics {
       maxDepth = depth;
     }
 
+    // Treat instances as opaque leaves — don't count child component internals
+    if (node.type === 'INSTANCE') {
+      leafCount++;
+      return;
+    }
+
     const children = node.children ?? [];
     if (children.length === 0) {
       leafCount++;
@@ -106,6 +112,10 @@ function computeCyclomaticMetrics(root: LintNode): CyclomaticMetrics {
         }
       }
     }
+
+    // Don't recurse into instance internals
+    if (node.type === 'INSTANCE') return;
+
     if (node.children) {
       for (const child of node.children) {
         walk(child);
@@ -209,7 +219,9 @@ function computeHalsteadMetrics(root: LintNode): HalsteadMetrics {
     if (node.paddingLeft !== undefined) operandBag.push(`paddingLeft:${node.paddingLeft}`);
     if (node.itemSpacing !== undefined) operandBag.push(`itemSpacing:${node.itemSpacing}`);
 
-    // Recurse
+    // Don't recurse into instance internals
+    if (node.type === 'INSTANCE') return;
+
     if (node.children) {
       for (const child of node.children) {
         walk(child);

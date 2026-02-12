@@ -127,6 +127,7 @@ function parseArgs(argv: string[]): CliArgs {
         i++;
         break;
       case '--url':
+      case '-url':
       case '-u':
         args.url = next ?? '';
         i++;
@@ -171,6 +172,13 @@ function parseArgs(argv: string[]): CliArgs {
   if (args.url) {
     const parts = parseFigmaUrl(args.url);
     if (!args.fileKey) args.fileKey = parts.fileKey;
+    if (!args.nodeId && parts.nodeId) args.nodeId = parts.nodeId;
+  }
+
+  // Safety net: if fileKey looks like a full Figma URL, parse it automatically
+  if (args.fileKey && args.fileKey.includes('figma.com/')) {
+    const parts = parseFigmaUrl(args.fileKey);
+    args.fileKey = parts.fileKey;
     if (!args.nodeId && parts.nodeId) args.nodeId = parts.nodeId;
   }
 

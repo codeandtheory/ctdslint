@@ -19,9 +19,13 @@ export interface FigmaUrlParts {
  * the REST API expects colons (`123:456`), so we normalise here.
  */
 export function parseFigmaUrl(url: string): FigmaUrlParts {
+  // Strip shell-escape backslashes (e.g. \? \= \&) that get passed through
+  // when URLs are copied from terminals or wrapped in double quotes in zsh.
+  const cleaned = url.replace(/\\([?=&])/g, '$1');
+
   let parsed: URL;
   try {
-    parsed = new URL(url);
+    parsed = new URL(cleaned);
   } catch {
     throw new Error(`Invalid URL: ${url}`);
   }
