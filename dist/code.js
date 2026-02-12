@@ -1100,24 +1100,24 @@ To fix: Select each component in Figma, then bind the listed properties to their
         ...textStyleSync.auditChecks,
         ...textStyleBindings.auditChecks
       ];
-      const collectionScore = calculateAuditScore(collectionValidation.auditChecks);
-      const textStyleScore = calculateAuditScore(combinedTextStyleSync);
-      const componentScore = calculateAuditScore(componentBindings.auditChecks);
       const allChecks = [
         ...collectionValidation.auditChecks,
         ...combinedTextStyleSync,
         ...componentBindings.auditChecks
       ];
-      const overallScore = calculateAuditScore(allChecks);
+      const overallStats = calculateAuditStats(allChecks);
+      const collectionStats = calculateAuditStats(collectionValidation.auditChecks);
+      const textStyleStats = calculateAuditStats(combinedTextStyleSync);
+      const componentStats = calculateAuditStats(componentBindings.auditChecks);
       sendMessageToUI("system-audit-result", {
         collectionStructure: collectionValidation.auditChecks,
         textStyleSync: combinedTextStyleSync,
         componentBindings: componentBindings.auditChecks,
         scores: {
-          overall: overallScore,
-          collection: collectionScore,
-          textStyle: textStyleScore,
-          component: componentScore
+          overall: overallStats,
+          collection: collectionStats,
+          textStyle: textStyleStats,
+          component: componentStats
         }
       });
       console.log("\u2705 CTDS audit complete");
@@ -1128,11 +1128,16 @@ To fix: Select each component in Figma, then bind the listed properties to their
       });
     }
   }
-  function calculateAuditScore(checks) {
-    if (checks.length === 0) return 100;
-    const passCount = checks.filter((c) => c.status === "pass").length;
-    const totalCount = checks.length;
-    return Math.round(passCount / totalCount * 100);
+  function calculateAuditStats(checks) {
+    if (checks.length === 0) {
+      return { score: 100, passed: 0, warnings: 0, failed: 0, total: 0 };
+    }
+    const passed = checks.filter((c) => c.status === "pass").length;
+    const warnings = checks.filter((c) => c.status === "warning").length;
+    const failed = checks.filter((c) => c.status === "fail").length;
+    const total = checks.length;
+    const score = Math.round(passed / total * 100);
+    return { score, passed, warnings, failed, total };
   }
   function initializePlugin() {
     console.log("\u{1F680} ctdsLint initialized (CTDS Audit only)");

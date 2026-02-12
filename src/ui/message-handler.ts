@@ -51,18 +51,17 @@ async function handleSystemAudit(): Promise<void> {
       ...textStyleBindings.auditChecks
     ];
 
-    // Calculate scores for each section
-    const collectionScore = calculateAuditScore(collectionValidation.auditChecks);
-    const textStyleScore = calculateAuditScore(combinedTextStyleSync);
-    const componentScore = calculateAuditScore(componentBindings.auditChecks);
-
-    // Calculate overall score (weighted average)
+    // Calculate scores for each section with detailed counts
     const allChecks = [
       ...collectionValidation.auditChecks,
       ...combinedTextStyleSync,
       ...componentBindings.auditChecks
     ];
-    const overallScore = calculateAuditScore(allChecks);
+
+    const overallStats = calculateAuditStats(allChecks);
+    const collectionStats = calculateAuditStats(collectionValidation.auditChecks);
+    const textStyleStats = calculateAuditStats(combinedTextStyleSync);
+    const componentStats = calculateAuditStats(componentBindings.auditChecks);
 
     // Send results to UI
     sendMessageToUI('system-audit-result', {
@@ -70,10 +69,10 @@ async function handleSystemAudit(): Promise<void> {
       textStyleSync: combinedTextStyleSync,
       componentBindings: componentBindings.auditChecks,
       scores: {
-        overall: overallScore,
-        collection: collectionScore,
-        textStyle: textStyleScore,
-        component: componentScore
+        overall: overallStats,
+        collection: collectionStats,
+        textStyle: textStyleStats,
+        component: componentStats
       }
     });
 
@@ -87,15 +86,20 @@ async function handleSystemAudit(): Promise<void> {
 }
 
 /**
- * Calculate audit score from checks
+ * Calculate audit statistics from checks
  */
-function calculateAuditScore(checks: any[]): number {
-  if (checks.length === 0) return 100;
+function calculateAuditStats(checks: any[]): { score: number; passed: number; warnings: number; failed: number; total: number } {
+  if (checks.length === 0) {
+    return { score: 100, passed: 0, warnings: 0, failed: 0, total: 0 };
+  }
 
-  const passCount = checks.filter(c => c.status === 'pass').length;
-  const totalCount = checks.length;
+  const passed = checks.filter(c => c.status === 'pass').length;
+  const warnings = checks.filter(c => c.status === 'warning').length;
+  const failed = checks.filter(c => c.status === 'fail').length;
+  const total = checks.length;
+  const score = Math.round((passed / total) * 100);
 
-  return Math.round((passCount / totalCount) * 100);
+  return { score, passed, warnings, failed, total };
 }
 
 /**
