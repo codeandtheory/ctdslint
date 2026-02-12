@@ -949,18 +949,23 @@ Each text style should be bound to variables that match its size. For example, "
     const auditChecks = [];
     const results = [];
     try {
-      let findComponents2 = function(node, pageName) {
-        if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
-          components.push({ node, pageName });
-        } else if ("children" in node) {
-          for (const child of node.children) {
-            findComponents2(child, pageName);
-          }
-        }
-      };
-      var findComponents = findComponents2;
       console.log("\u{1F9E9} [COMPONENT BINDING] Starting validation...");
       const components = [];
+      let nodesProcessed = 0;
+      async function findComponents(node, pageName) {
+        if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
+          components.push({ node, pageName });
+        }
+        if ("children" in node) {
+          for (const child of node.children) {
+            nodesProcessed++;
+            if (nodesProcessed % 50 === 0) {
+              await new Promise((resolve) => setTimeout(resolve, 0));
+            }
+            await findComponents(child, pageName);
+          }
+        }
+      }
       console.log("\u{1F9E9} [COMPONENT BINDING] Loading all pages...");
       figma.ui.postMessage({
         type: "audit-progress",
@@ -976,9 +981,9 @@ Each text style should be bound to variables that match its size. For example, "
           type: "audit-progress",
           data: { message: `Scanning page ${i + 1}/${totalPages}: "${page.name}"` }
         });
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        nodesProcessed = 0;
         for (const child of page.children) {
-          findComponents2(child, page.name);
+          await findComponents(child, page.name);
         }
       }
       console.log("\u{1F9E9} [COMPONENT BINDING] Found", components.length, "components across", figma.root.children.length, "pages");

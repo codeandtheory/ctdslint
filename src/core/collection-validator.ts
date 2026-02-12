@@ -1453,12 +1453,24 @@ export async function validateAllComponentBindings(): Promise<{
       pageName: string;
     }> = [];
 
-    function findComponents(node: SceneNode, pageName: string) {
+    let nodesProcessed = 0;
+
+    // Async recursive function with periodic yields
+    async function findComponents(node: SceneNode, pageName: string): Promise<void> {
       if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
         components.push({ node, pageName });
-      } else if ('children' in node) {
+      }
+
+      if ('children' in node) {
         for (const child of node.children) {
-          findComponents(child, pageName);
+          nodesProcessed++;
+
+          // Yield every 50 nodes to keep UI responsive on large pages
+          if (nodesProcessed % 50 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+          }
+
+          await findComponents(child, pageName);
         }
       }
     }
@@ -1483,11 +1495,11 @@ export async function validateAllComponentBindings(): Promise<{
         data: { message: `Scanning page ${i + 1}/${totalPages}: "${page.name}"` }
       });
 
-      // Yield to UI after each page to prevent freezing
-      await new Promise(resolve => setTimeout(resolve, 0));
+      // Reset counter for each page
+      nodesProcessed = 0;
 
       for (const child of page.children) {
-        findComponents(child, page.name);
+        await findComponents(child, page.name);
       }
     }
 
