@@ -77,15 +77,139 @@ node dist-cli/cli/index.js --audit-type components
 node dist-cli/cli/index.js --audit-type variables-styles
 ```
 
+#### Component Complexity Analysis
+
+Analyse the structural, cyclomatic, and Halstead complexity of Figma components. Pass a Figma URL with `--url` or use `--file-key` with an optional `--node-id`.
+
+```bash
+# Analyse a specific component from a Figma URL
+node dist-cli/cli/index.js --url "https://www.figma.com/design/abc123/MyLib?node-id=42-100" --audit-type complexity
+
+# Analyse all components in a file
+node dist-cli/cli/index.js -f abc123DEF --audit-type complexity
+
+# Output complexity report as JSON
+node dist-cli/cli/index.js --url "https://..." --audit-type complexity --format json -o complexity.json
+```
+
+##### Complexity Scores Explained
+
+The analyser adapts three established code complexity metrics to design components:
+
+**Structural Metrics**
+
+Basic shape of the component tree.
+
+| Metric | What it measures |
+|---|---|
+| Node count | Total layers in the component subtree |
+| Max depth | Deepest level of nesting (root = 0) |
+| Leaf nodes | Terminal layers with no children |
+| Max fan-out | Largest number of direct children at any level |
+| Unique types | Distinct layer types used (FRAME, TEXT, INSTANCE, etc.) |
+
+**Cyclomatic Complexity (design equivalent)**
+
+In code, cyclomatic complexity counts independent execution paths. In a component, the equivalent "paths" are the ways a consumer can configure it:
+
+- Base of **1** (the component itself)
+- **+N** for each variant axis (one per option, e.g. 3 sizes = +3)
+- **+1** per boolean property (show/hide icon, disabled state, etc.)
+- **+1** per instance-swap slot (swappable icon, avatar, etc.)
+- **+1** per text property (overridable label, description, etc.)
+
+A score of 1 is a static component with no configurability. Scores above ~10 suggest a component with many states that may be hard to test exhaustively.
+
+**Halstead Complexity (design equivalent)**
+
+Halstead metrics measure the "vocabulary" and "volume" of a program. For design components:
+
+- **Operators** are structural constructs: layer types, layout modes, blend modes, effect types, constraint types
+- **Operands** are concrete values: colours, font sizes, spacing, corner radii, opacity, stroke weights
+
+From these, the standard Halstead formulas produce:
+
+| Metric | Formula | Meaning |
+|---|---|---|
+| Vocabulary (n) | n1 + n2 | Unique operators + unique operands |
+| Length (N) | N1 + N2 | Total operators + total operands |
+| Volume | N * log2(n) | Information content of the component |
+| Difficulty | (n1/2) * (N2/n2) | How hard it is to understand |
+| Effort | Difficulty * Volume | Overall cognitive effort |
+
+**Composite Score (0–100)**
+
+A single weighted summary for quick comparison:
+
+- 30% structural (log-scaled node count + depth)
+- 30% cyclomatic
+- 40% Halstead volume (log-scaled)
+
+Each dimension is clamped to 0–100 before weighting so no single axis dominates.
+
+| Range | Label |
+|---|---|
+| 0–20 | Simple |
+| 21–40 | Moderate |
+| 41–60 | Complex |
+| 61–80 | Very Complex |
+| 81–100 | Extremely Complex |
+
+##### Example Output
+
+Single-component analysis:
+
+```
+============================================================
+  ctdsLint Component Complexity Report
+============================================================
+Component Complexity: Button/Primary (42:100)
+──────────────────────────────────────────────
+Structural
+  Node count       24
+  Max depth         5
+  Leaf nodes       14
+  Max fan-out       6
+  Unique types      4  (FRAME, TEXT, INSTANCE, VECTOR)
+
+Cyclomatic         7    (1 base + 3 variants + 2 boolean + 1 swap)
+Halstead Volume    82.4 (n=18, N=42)
+Halstead Effort    312.8
+
+Composite Score    38/100  ████████░░░░░░░░░░░░  Moderate
+============================================================
+```
+
+Multi-component summary table (sorted by complexity, top 5 shown in detail):
+
+```
+============================================================
+  ctdsLint Component Complexity Report
+============================================================
+
+  12 components analysed (sorted by complexity)
+
+  Component                            CC      Halst   Depth   Nodes   Score
+  ────────────────────────────────────────────────────────────────────────────
+  DataTable                            14      210.5   8       87      72/100
+  Navigation/Header                    9       142.3   6       54      58/100
+  Button/Primary                       7       82.4    5       24      38/100
+  Card/Product                         4       64.1    4       18      31/100
+  Avatar                               2       22.7    2       6       12/100
+  ...
+```
+
 #### CLI Options
 
 | Flag | Env Variable | Description |
 |---|---|---|
 | `--file-key`, `-f` | `FIGMA_FILE_KEY` | Figma file key |
+| `--url`, `-u` | | Figma URL (extracts file key and optional node ID) |
+| `--node-id`, `-n` | | Target node ID for complexity analysis |
 | `--token`, `-t` | `FIGMA_PERSONAL_ACCESS_TOKEN` | Figma Personal Access Token |
 | `--output`, `-o` | | Output file path (e.g. `report.json`, `report.html`) |
 | `--format` | | Output format: `json`, `html`, or `console` (default) |
-| `--audit-type` | | Audit scope: `system` (default), `variables-styles`, or `components` |
+| `--audit-type` | | Audit scope: `system` (default), `variables-styles`, `components`, or `complexity` |
 | `--help`, `-h` | | Show help text |
 
 The CLI exits with code `2` when any audit checks fail, making it suitable for CI pipelines.
@@ -99,14 +223,16 @@ src/
 ├── shared/
 │   └── types.ts                 # API-agnostic data interfaces
 ├── core/
-│   └── collection-validator.ts  # Validation logic (platform-independent)
+│   ├── collection-validator.ts  # Validation logic (platform-independent)
+│   └── complexity-analyzer.ts   # Component complexity metrics
 ├── plugin/
 │   └── data-adapter.ts          # Figma Plugin API → shared types
 ├── cli/
 │   ├── index.ts                 # CLI entry point
 │   ├── figma-api.ts             # Figma REST API client
 │   ├── data-adapter.ts          # REST API → shared types
-│   └── reporters.ts             # Console, JSON, and HTML output
+│   ├── reporters.ts             # Console, JSON, and HTML output
+│   └── url-parser.ts            # Figma URL → file key + node ID
 ├── ui/
 │   └── message-handler.ts       # Plugin ↔ UI message routing
 └── utils/
