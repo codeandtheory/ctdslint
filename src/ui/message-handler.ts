@@ -1,6 +1,7 @@
 /// <reference types="@figma/plugin-typings" />
 
 import { sendMessageToUI } from '../utils/figma-helpers';
+import { fetchPluginData, findComponents } from '../plugin/data-adapter';
 import {
   validateCollectionStructure,
   validateTextStylesAgainstVariables,
@@ -43,13 +44,26 @@ async function handleSystemAudit(): Promise<void> {
   try {
     console.log('🔍 Running CT/DS audit...');
 
-    // Run all system-level validations
-    const [collectionValidation, textStyleSync, textStyleBindings, componentBindings] = await Promise.all([
-      validateCollectionStructure(),
-      validateTextStylesAgainstVariables(),
-      validateTextStyleBindings(),
-      validateAllComponentBindings()
-    ]);
+    // Fetch all data once via the plugin adapter
+    const data = await fetchPluginData();
+    const components = findComponents(data.pages);
+
+    // Run all system-level validations (now synchronous, data-driven)
+    const collectionValidation = validateCollectionStructure(
+      data.collections, data.variables
+    );
+    const textStyleSync = validateTextStylesAgainstVariables(
+      data.collections, data.variables, data.textStyles
+    );
+    const textStyleBindings = validateTextStyleBindings(
+      data.textStyles, data.variables
+    );
+    const componentBindings = validateAllComponentBindings(
+      components,
+      (message) => {
+        figma.ui.postMessage({ type: 'audit-progress', data: { message } });
+      }
+    );
 
     // Combine text style checks
     const combinedTextStyleSync = [
@@ -98,12 +112,17 @@ async function handleVariablesStylesAudit(): Promise<void> {
   try {
     console.log('🔍 Running Variables & Styles audit...');
 
-    // Run collection and text style validations only
-    const [collectionValidation, textStyleSync, textStyleBindings] = await Promise.all([
-      validateCollectionStructure(),
-      validateTextStylesAgainstVariables(),
-      validateTextStyleBindings()
-    ]);
+    const data = await fetchPluginData();
+
+    const collectionValidation = validateCollectionStructure(
+      data.collections, data.variables
+    );
+    const textStyleSync = validateTextStylesAgainstVariables(
+      data.collections, data.variables, data.textStyles
+    );
+    const textStyleBindings = validateTextStyleBindings(
+      data.textStyles, data.variables
+    );
 
     // Combine text style checks
     const combinedTextStyleSync = [
@@ -148,8 +167,15 @@ async function handleComponentsAudit(): Promise<void> {
   try {
     console.log('🔍 Running Components audit...');
 
-    // Run component bindings validation only
-    const componentBindings = await validateAllComponentBindings();
+    const data = await fetchPluginData();
+    const components = findComponents(data.pages);
+
+    const componentBindings = validateAllComponentBindings(
+      components,
+      (message) => {
+        figma.ui.postMessage({ type: 'audit-progress', data: { message } });
+      }
+    );
 
     // Calculate score using component-specific stats (pass/fail only)
     const componentStats = calculateComponentStats(componentBindings.auditChecks);
