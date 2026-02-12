@@ -1142,11 +1142,11 @@ To fix: Select each component in Figma, then bind the listed properties to their
   var PLUGIN_WINDOW_SIZE = { width: 400, height: 700 };
   try {
     figma.showUI(__html__, PLUGIN_WINDOW_SIZE);
-    console.log("\u2705 FigmaLint v2.0 - UI shown successfully");
+    console.log("\u2705 ctdsLint v3.0 - UI shown successfully");
   } catch (error) {
     console.log("\u2139\uFE0F UI might already be shown in inspect panel:", error);
   }
   figma.ui.onmessage = handleUIMessage;
   initializePlugin();
-  console.log("\u{1F680} FigmaLint v2.0 initialized with modular architecture");
+  console.log("\u{1F680} ctdsLint v3.0 initialized - CTDS validation ready");
 })();
