@@ -19,4 +19,4 @@ figma.ui.onmessage = handleUIMessage;
 // Initialize plugin
 initializePlugin();
 
-console.log('🚀 ctdsLint v3.0 initialized - CTDS validation ready');
+console.log('🚀 ctdsLint v3.0 initialized - CT/DS validation ready');

@@ -2224,9 +2224,9 @@
                 <!-- Tab Content: Analyze -->
     <div class="tab-content active" id="content-analyze">
       <div class="content">
-        <!-- CTDS Audit Heading and Buttons -->
+        <!-- CT/DS Audit Heading and Buttons -->
         <div style="margin-bottom: 16px;">
-          <h2 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0; color: var(--text-primary);">Run CTDS Audit</h2>
+          <h2 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0; color: var(--text-primary);">Run CT/DS Audit</h2>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <button id="run-variables-styles" class="button button-primary">
               <span>Variables & Styles</span>
@@ -2253,15 +2253,15 @@
           </div>
         </div>
 
-        <!-- CTDS Audit Results -->
+        <!-- CT/DS Audit Results -->
         <div id="system-results" class="hidden">
           <div style="margin-bottom: 24px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-              <h3 style="font-size: 14px; font-weight: 600; margin: 0; flex: 1;">CTDS Audit Results</h3>
+              <h3 style="font-size: 14px; font-weight: 600; margin: 0; flex: 1;">CT/DS Audit Results</h3>
               <div class="tooltip">
                 <div class="info-icon">i</div>
                 <span class="tooltiptext">
-                  <strong>CTDS Audit</strong><br>
+                  <strong>CT/DS Audit</strong><br>
                   Validates variable collections, text styles, and component variable bindings across the entire file.
                 </span>
               </div>
@@ -3607,7 +3607,7 @@
     }
 
     // Handle API Key Saved
-    // Handle System Audit Result (CTDS Audit)
+    // Handle System Audit Result (CT/DS Audit)
     function handleSystemAuditResult(data) {
       // Hide progress indicator when results arrive
       const progressContainer = document.getElementById('progress-container');
@@ -3617,12 +3617,12 @@
       console.log('UI received system audit result:', data);
       
       if (data.error) {
-        updateStatus(`CTDS audit failed: ${data.error}`, 'error');
+        updateStatus(`CT/DS audit failed: ${data.error}`, 'error');
         systemAuditContent.innerHTML = `<div style="color: var(--error); padding: 8px;">Error: ${data.error}</div>`;
         return;
       }
 
-      updateStatus('CTDS audit complete!', 'success');
+      updateStatus('CT/DS audit complete!', 'success');
       
       let html = '';
       

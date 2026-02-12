@@ -1,10 +1,10 @@
 # ctdsLint
 
-A Figma plugin that audits your design system for CTDS (Code & Theory Design System) compliance. Validates variable collections, text styles, and component variable bindings to ensure your design system follows best practices.
+A Figma plugin that audits your design system for CT/DS (Code & Theory Design System) compliance. Validates variable collections, text styles, and component variable bindings to ensure your design system follows best practices.
 
 ## Features
 
-### CTDS Audit
+### CT/DS Audit
 
 Run a comprehensive system-level audit that validates:
 
@@ -35,7 +35,7 @@ Each validation category receives a score based on:
 
 1. Open your Figma file with variable collections and components
 2. Run the plugin: Plugins > ctdsLint
-3. Click "Run CTDS Audit" to validate your design system
+3. Click "Run CT/DS Audit" to validate your design system
 4. Review the audit results organized by category
 5. Address any failures or warnings identified
 
@@ -46,7 +46,7 @@ src/
 ├── code.ts                      # Plugin entry point
 ├── types.ts                     # TypeScript definitions
 ├── core/
-│   └── collection-validator.ts  # CTDS validation logic
+│   └── collection-validator.ts  # CT/DS validation logic
 ├── ui/
 │   └── message-handler.ts       # Plugin ↔ UI message routing
 └── utils/

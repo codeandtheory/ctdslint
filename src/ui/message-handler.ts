@@ -9,7 +9,7 @@ import {
 } from '../core/collection-validator';
 
 /**
- * Main message handler for UI communication (CTDS Audit only)
+ * Main message handler for UI communication (CT/DS Audit only)
  */
 export async function handleUIMessage(msg: any): Promise<void> {
   const { type } = msg;
@@ -37,11 +37,11 @@ export async function handleUIMessage(msg: any): Promise<void> {
 }
 
 /**
- * System audit (CTDS Audit) - validates design system structure
+ * System audit (CT/DS Audit) - validates design system structure
  */
 async function handleSystemAudit(): Promise<void> {
   try {
-    console.log('🔍 Running CTDS audit...');
+    console.log('🔍 Running CT/DS audit...');
 
     // Run all system-level validations
     const [collectionValidation, textStyleSync, textStyleBindings, componentBindings] = await Promise.all([
@@ -82,9 +82,9 @@ async function handleSystemAudit(): Promise<void> {
       }
     });
 
-    console.log('✅ CTDS audit complete');
+    console.log('✅ CT/DS audit complete');
   } catch (error) {
-    console.error('❌ CTDS audit error:', error);
+    console.error('❌ CT/DS audit error:', error);
     sendMessageToUI('system-audit-result', {
       error: error instanceof Error ? error.message : 'Unknown error during system audit'
     });
@@ -192,5 +192,5 @@ function calculateAuditStats(checks: any[]): { score: number; passed: number; wa
  * Initialize plugin
  */
 export function initializePlugin(): void {
-  console.log('🚀 ctdsLint initialized (CTDS Audit only)');
+  console.log('🚀 ctdsLint initialized (CT/DS Audit only)');
 }

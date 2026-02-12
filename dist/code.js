@@ -1095,7 +1095,7 @@ To fix: Select each component in Figma, then bind the listed properties to their
   }
   async function handleSystemAudit() {
     try {
-      console.log("\u{1F50D} Running CTDS audit...");
+      console.log("\u{1F50D} Running CT/DS audit...");
       const [collectionValidation, textStyleSync, textStyleBindings, componentBindings] = await Promise.all([
         validateCollectionStructure(),
         validateTextStylesAgainstVariables(),
@@ -1126,9 +1126,9 @@ To fix: Select each component in Figma, then bind the listed properties to their
           component: componentStats
         }
       });
-      console.log("\u2705 CTDS audit complete");
+      console.log("\u2705 CT/DS audit complete");
     } catch (error) {
-      console.error("\u274C CTDS audit error:", error);
+      console.error("\u274C CT/DS audit error:", error);
       sendMessageToUI("system-audit-result", {
         error: error instanceof Error ? error.message : "Unknown error during system audit"
       });
@@ -1201,7 +1201,7 @@ To fix: Select each component in Figma, then bind the listed properties to their
     return { score, passed, warnings, failed, total };
   }
   function initializePlugin() {
-    console.log("\u{1F680} ctdsLint initialized (CTDS Audit only)");
+    console.log("\u{1F680} ctdsLint initialized (CT/DS Audit only)");
   }
 
   // src/code.ts
@@ -1214,5 +1214,5 @@ To fix: Select each component in Figma, then bind the listed properties to their
   }
   figma.ui.onmessage = handleUIMessage;
   initializePlugin();
-  console.log("\u{1F680} ctdsLint v3.0 initialized - CTDS validation ready");
+  console.log("\u{1F680} ctdsLint v3.0 initialized - CT/DS validation ready");
 })();
