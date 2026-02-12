@@ -148,10 +148,26 @@
           }
           console.log(`\u2139\uFE0F [COLLECTION] No "${requirement.displayName}" collection found - suggesting creation`);
           const categoryList = requirement.requiredCategories.map((c) => c.name).join(", ");
+          const examples = requirement.requiredCategories.map((cat) => {
+            switch (cat.name) {
+              case "color":
+                return `  - color/primary, color/secondary, color/accent (brand colors)`;
+              case "space":
+                return `  - space/xs, space/sm, space/md, space/lg, space/xl (spacing scale)`;
+              case "radius":
+                return `  - radius/sm, radius/md, radius/lg (corner radii)`;
+              default:
+                return `  - ${cat.name}/...`;
+            }
+          }).join("\n");
           auditChecks.push({
             check: `${requirement.displayName} collection`,
             status: "warning",
-            suggestion: `Consider creating a "${requirement.displayName}" collection with ${categoryList} categories for better design token organization.`
+            suggestion: `No "${requirement.displayName}" collection found. Consider creating one with these categories:
+
+${examples}
+
+This collection helps organize your ${categoryList} tokens for better design system structure.`
           });
           continue;
         }
@@ -173,57 +189,104 @@
           });
         } else {
           if (validationResult.missingCategories.length > 0) {
+            const missingExamples = validationResult.missingCategories.map((cat) => {
+              switch (cat) {
+                case "color":
+                  return `  - ${cat}/primary, ${cat}/secondary, ${cat}/accent`;
+                case "space":
+                  return `  - ${cat}/xs, ${cat}/sm, ${cat}/md, ${cat}/lg`;
+                case "radius":
+                  return `  - ${cat}/sm, ${cat}/md, ${cat}/lg`;
+                default:
+                  return `  - ${cat}/*`;
+              }
+            }).join("\n");
             auditChecks.push({
               check: `${requirement.displayName} collection categories`,
               status: "fail",
-              suggestion: `"${matchingCollection.name}" is missing required categories: ${validationResult.missingCategories.join(", ")}. Add variables with these prefixes (e.g., "${validationResult.missingCategories[0]}/...").`
+              suggestion: `"${matchingCollection.name}" collection is missing required categories: ${validationResult.missingCategories.join(", ")}.
+
+Add variables following these patterns:
+${missingExamples}
+
+These categories are essential for a complete ${requirement.displayName} collection.`
             });
           }
           for (const subResult of validationResult.subCategoryResults) {
             if (subResult.missing.length > 0) {
+              const missingList = subResult.missing.slice(0, 5).join(", ") + (subResult.missing.length > 5 ? `, and ${subResult.missing.length - 5} more` : "");
+              const exampleVars = subResult.missing.slice(0, 3).map((m) => `  - ${subResult.category}/${m}`).join("\n");
               auditChecks.push({
                 check: `${requirement.displayName} ${subResult.category} sub-categories`,
                 status: "warning",
-                suggestion: `"${matchingCollection.name}" ${subResult.category} category is missing sub-categories: ${subResult.missing.join(", ")}. Add variables like "${subResult.category}/${subResult.missing[0]}/...".`
+                suggestion: `"${matchingCollection.name}" ${subResult.category} category is missing sub-categories: ${missingList}.
+
+Add these variables to complete your ${subResult.category} scale:
+${exampleVars}
+
+Consistent sub-categories across all categories make your design system more predictable.`
               });
             }
             if (subResult.patternValidation) {
               const { allMatch, invalidNames, patternDescription, examples } = subResult.patternValidation;
               if (subResult.found.length === 0) {
+                const exampleVars = examples.slice(0, 3).map((ex) => `  - ${ex}`).join("\n");
                 auditChecks.push({
                   check: `${requirement.displayName} ${subResult.category} naming`,
                   status: "warning",
-                  suggestion: `"${matchingCollection.name}" ${subResult.category} category has no sub-categories following ${patternDescription}. Add variables like ${examples.slice(0, 3).join(", ")}.`
+                  suggestion: `"${matchingCollection.name}" ${subResult.category} category has no sub-categories following the expected naming pattern.
+
+Expected pattern: ${patternDescription}
+
+Add variables like:
+${exampleVars}
+
+Consistent naming makes variables easier to find and use.`
                 });
               } else {
+                const foundList = subResult.found.slice(0, 5).join(", ") + (subResult.found.length > 5 ? `... (${subResult.found.length} total)` : "");
                 auditChecks.push({
                   check: `${requirement.displayName} ${subResult.category} naming`,
                   status: "pass",
-                  suggestion: `"${matchingCollection.name}" ${subResult.category} has valid sizes: ${subResult.found.slice(0, 5).join(", ")}${subResult.found.length > 5 ? "..." : ""}`
+                  suggestion: `"${matchingCollection.name}" ${subResult.category} follows the correct naming pattern with sizes: ${foundList}`
                 });
               }
             }
             if (subResult.mirrorValidation) {
               const { sourceCategory, missingSizes, extraSizes, isFullMatch } = subResult.mirrorValidation;
               if (missingSizes.length > 0) {
+                const missingList = missingSizes.slice(0, 5).join(", ") + (missingSizes.length > 5 ? `, and ${missingSizes.length - 5} more` : "");
+                const exampleVars = missingSizes.slice(0, 3).map((sz) => `  - ${subResult.category}/${sz}`).join("\n");
                 auditChecks.push({
                   check: `${requirement.displayName} ${subResult.category} sizes`,
                   status: "warning",
-                  suggestion: `"${matchingCollection.name}" ${subResult.category} is missing sizes that exist in ${sourceCategory}: ${missingSizes.join(", ")}. Add matching variables for each ${sourceCategory} size.`
+                  suggestion: `"${matchingCollection.name}" ${subResult.category} is missing sizes that exist in ${sourceCategory}: ${missingList}.
+
+Add these variables to mirror your ${sourceCategory} scale:
+${exampleVars}
+
+Keeping ${subResult.category} and ${sourceCategory} synchronized ensures typography remains consistent.`
                 });
               }
               if (extraSizes.length > 0) {
+                const extraList = extraSizes.slice(0, 5).join(", ") + (extraSizes.length > 5 ? `, and ${extraSizes.length - 5} more` : "");
                 auditChecks.push({
                   check: `${requirement.displayName} ${subResult.category} extra sizes`,
                   status: "warning",
-                  suggestion: `"${matchingCollection.name}" ${subResult.category} has sizes not in ${sourceCategory}: ${extraSizes.join(", ")}. Consider adding these to ${sourceCategory} or removing them.`
+                  suggestion: `"${matchingCollection.name}" ${subResult.category} has sizes that don't exist in ${sourceCategory}: ${extraList}.
+
+Consider either:
+  - Adding these sizes to ${sourceCategory} (if they're needed)
+  - Removing them from ${subResult.category} (if they're unused)
+
+Mismatched scales can lead to inconsistent typography.`
                 });
               }
               if (isFullMatch && subResult.found.length > 0) {
                 auditChecks.push({
                   check: `${requirement.displayName} ${subResult.category} mirrors ${sourceCategory}`,
                   status: "pass",
-                  suggestion: `"${matchingCollection.name}" ${subResult.category} correctly mirrors all ${sourceCategory} sizes`
+                  suggestion: `"${matchingCollection.name}" ${subResult.category} correctly mirrors all ${sourceCategory} sizes (${subResult.found.length} sizes matched)`
                 });
               }
             }
@@ -424,30 +487,58 @@
       if (fontFamilyVariables.length === 0 && textStyles.length === 0) {
         console.log("\u{1F4DD} [TEXT STYLE] No font-family variables or text styles found, skipping validation");
       } else if (fontFamilyVariables.length === 0 && textStyles.length > 0) {
+        const categoryList = relevantTextCategories.slice(0, 3).join(", ") + (relevantTextCategories.length > 3 ? `, and ${relevantTextCategories.length - 3} more` : "");
+        const exampleVars = relevantTextCategories.slice(0, 3).map((cat) => `  - font-family/${cat}`).join("\n");
         auditChecks.push({
           check: "Font-family variables",
           status: "warning",
-          suggestion: `Text styles exist (${relevantTextCategories.join(", ")}) but no font-family variables found. Consider adding font-family variables to your Theme collection to match your text styles.`
+          suggestion: `You have text styles (${categoryList}) but no matching font-family variables.
+
+Add these variables to your Theme collection:
+${exampleVars}
+
+This allows text styles to reference font families as variables instead of hard-coded font names.`
         });
       } else if (fontFamilyVariables.length > 0 && textStyles.length === 0) {
+        const varList = fontFamilyVariables.slice(0, 3).join(", ") + (fontFamilyVariables.length > 3 ? `, and ${fontFamilyVariables.length - 3} more` : "");
+        const exampleStyles = fontFamilyVariables.slice(0, 3).map((v) => `  - ${v}/xl, ${v}/lg, ${v}/md, etc.`).join("\n");
         auditChecks.push({
           check: "Text styles",
           status: "warning",
-          suggestion: `Font-family variables exist (${fontFamilyVariables.join(", ")}) but no text styles found. Create text styles with matching names (e.g., "${fontFamilyVariables[0]}/...").`
+          suggestion: `You have font-family variables (${varList}) but no matching text styles.
+
+Create text styles following these patterns:
+${exampleStyles}
+
+Text styles make typography consistent and easier to apply across your designs.`
         });
       } else {
         if (variablesMissingStyles.length > 0) {
+          const varList = variablesMissingStyles.slice(0, 3).join(", ") + (variablesMissingStyles.length > 3 ? `, and ${variablesMissingStyles.length - 3} more` : "");
+          const exampleStyles = variablesMissingStyles.slice(0, 3).map((v) => `  - ${v}/xl, ${v}/lg, ${v}/md`).join("\n");
           auditChecks.push({
             check: "Text styles for font-family variables",
             status: "warning",
-            suggestion: `Font-family variables missing matching text styles: ${variablesMissingStyles.join(", ")}. Create text styles like "${variablesMissingStyles[0]}/..." to match.`
+            suggestion: `These font-family variables don't have matching text styles: ${varList}.
+
+Create text styles using these patterns:
+${exampleStyles}
+
+This ensures all font-family variables are used in your text style system.`
           });
         }
         if (stylesMissingVariables.length > 0) {
+          const styleList = stylesMissingVariables.slice(0, 3).join(", ") + (stylesMissingVariables.length > 3 ? `, and ${stylesMissingVariables.length - 3} more` : "");
+          const exampleVars = stylesMissingVariables.slice(0, 3).map((s) => `  - font-family/${s}`).join("\n");
           auditChecks.push({
             check: "Font-family variables for text styles",
             status: "warning",
-            suggestion: `Text styles missing matching font-family variables: ${stylesMissingVariables.join(", ")}. Add font-family/${stylesMissingVariables[0]} to your Theme collection.`
+            suggestion: `These text style categories don't have matching font-family variables: ${styleList}.
+
+Add these variables to your Theme collection:
+${exampleVars}
+
+This allows your text styles to reference font families dynamically.`
           });
         }
         if (isFullMatch && fontFamilyVariables.length > 0) {
@@ -906,45 +997,38 @@ Each text style should be bound to variables that match its size. For example, "
             totalCounts[cat] += comp.counts[cat];
           }
         }
-        const categoryMessages = [];
-        if (totalCounts.fill > 0) {
-          categoryMessages.push(`${totalCounts.fill} fill colors`);
-        }
-        if (totalCounts.stroke > 0) {
-          categoryMessages.push(`${totalCounts.stroke} stroke colors`);
-        }
-        if (totalCounts.spacing > 0) {
-          categoryMessages.push(`${totalCounts.spacing} spacing values`);
-        }
-        if (totalCounts.cornerRadius > 0) {
-          categoryMessages.push(`${totalCounts.cornerRadius} corner radii`);
-        }
-        if (totalCounts.typography > 0) {
-          categoryMessages.push(`${totalCounts.typography} typography values`);
-        }
-        if (totalCounts.effect > 0) {
-          categoryMessages.push(`${totalCounts.effect} effects`);
-        }
-        const sampleComponents = componentsWithIssues.slice(0, 3).map((c) => `"${c.name}"`).join(", ");
+        const componentDescriptions = componentsWithIssues.map((comp) => {
+          const issues = [];
+          if (comp.counts.fill > 0) {
+            issues.push(`  - ${comp.counts.fill} fill color${comp.counts.fill > 1 ? "s" : ""} (should use color/* variables)`);
+          }
+          if (comp.counts.stroke > 0) {
+            issues.push(`  - ${comp.counts.stroke} stroke color${comp.counts.stroke > 1 ? "s" : ""} (should use color/* variables)`);
+          }
+          if (comp.counts.spacing > 0) {
+            issues.push(`  - ${comp.counts.spacing} spacing value${comp.counts.spacing > 1 ? "s" : ""} (should use space/* variables for padding/gap)`);
+          }
+          if (comp.counts.cornerRadius > 0) {
+            issues.push(`  - ${comp.counts.cornerRadius} corner radi${comp.counts.cornerRadius > 1 ? "i" : "us"} (should use radius/* variables)`);
+          }
+          if (comp.counts.typography > 0) {
+            issues.push(`  - ${comp.counts.typography} typography value${comp.counts.typography > 1 ? "s" : ""} (should use font-* variables)`);
+          }
+          if (comp.counts.effect > 0) {
+            issues.push(`  - ${comp.counts.effect} effect${comp.counts.effect > 1 ? "s" : ""} (should use effect/* variables)`);
+          }
+          return `\u2022 Component "${comp.name}" has ${comp.totalRawValues} hard-coded value${comp.totalRawValues > 1 ? "s" : ""}:
+${issues.join("\n")}`;
+        });
         auditChecks.push({
           check: "Component variable bindings",
           status: "warning",
-          suggestion: `${componentsWithIssues.length} component(s) have raw values: ${categoryMessages.join(", ")}. Components: ${sampleComponents}${componentsWithIssues.length > 3 ? ` and ${componentsWithIssues.length - 3} more` : ""}. Use theme variables instead.`
+          suggestion: `${componentsWithIssues.length} component(s) have hard-coded values instead of using theme variables:
+
+${componentDescriptions.join("\n\n")}
+
+To fix: Select each component in Figma, then bind the listed properties to their corresponding variables in your Theme collection. This ensures consistent styling and makes design updates easier.`
         });
-        if (totalCounts.fill > 5) {
-          auditChecks.push({
-            check: "Component fill colors",
-            status: "warning",
-            suggestion: `${totalCounts.fill} fill colors are using raw values. Bind to color variables from your Theme collection (e.g., colors/bg/*, colors/text/*).`
-          });
-        }
-        if (totalCounts.spacing > 5) {
-          auditChecks.push({
-            check: "Component spacing",
-            status: "warning",
-            suggestion: `${totalCounts.spacing} spacing values (padding, gap) are using raw values. Bind to spacing variables from your Theme collection.`
-          });
-        }
       }
       if (compliantComponents === totalComponents && totalComponents > 0) {
         auditChecks.push({
