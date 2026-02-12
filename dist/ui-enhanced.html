@@ -2224,11 +2224,17 @@
                 <!-- Tab Content: Analyze -->
     <div class="tab-content active" id="content-analyze">
       <div class="content">
-        <!-- CTDS Audit Button (no API key required) -->
-        <div class="button-group" style="margin-bottom: 16px;">
-          <button id="run-ctds-audit" class="button button-primary" style="width: 100%;">
-            <span>Run CTDS Audit</span>
-          </button>
+        <!-- CTDS Audit Heading and Buttons -->
+        <div style="margin-bottom: 16px;">
+          <h2 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0; color: var(--text-primary);">Run CTDS Audit</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <button id="run-variables-styles" class="button button-primary">
+              <span>Variables & Styles</span>
+            </button>
+            <button id="run-components" class="button button-primary">
+              <span>Components</span>
+            </button>
+          </div>
         </div>
 
         <!-- Status Message -->
@@ -2415,7 +2421,8 @@
 
     // Chat State Management
     // DOM Elements
-    const runCtdsAuditButton = document.getElementById('run-ctds-audit');
+    const runVariablesStylesButton = document.getElementById('run-variables-styles');
+    const runComponentsButton = document.getElementById('run-components');
 
     const statusContainer = document.getElementById('status-container');
     const statusDiv = document.getElementById('status');
@@ -2782,7 +2789,8 @@
       console.log('Initializing enhanced UI...');
 
       // Event Listeners
-      runCtdsAuditButton.addEventListener('click', handleAnalyzeSystem);
+      runVariablesStylesButton.addEventListener('click', handleAnalyzeVariablesStyles);
+      runComponentsButton.addEventListener('click', handleAnalyzeComponents);
 
       // Listen for messages from plugin
       window.addEventListener('message', handlePluginMessage);
@@ -3362,16 +3370,16 @@
     })();
 
     // Handle API Key Changes
-    // Handle CTDS Audit
-    function handleAnalyzeSystem() {
-      updateStatus('Running CTDS audit...', 'info');
+    // Handle Variables & Styles Audit
+    function handleAnalyzeVariablesStyles() {
+      updateStatus('Running Variables & Styles audit...', 'info');
 
       // Show progress indicator
       const progressContainer = document.getElementById('progress-container');
       const progressText = document.getElementById('progress-text');
       if (progressContainer && progressText) {
         progressContainer.classList.remove('hidden');
-        progressText.textContent = 'Initializing audit...';
+        progressText.textContent = 'Analyzing variables and styles...';
       }
 
       // Show system results
@@ -3384,7 +3392,32 @@
         <div class="skeleton" style="width: 60%;"></div>
       `;
 
-      sendMessageToPlugin('analyze-system', {});
+      sendMessageToPlugin('analyze-variables-styles', {});
+    }
+
+    // Handle Components Audit
+    function handleAnalyzeComponents() {
+      updateStatus('Running Components audit...', 'info');
+
+      // Show progress indicator
+      const progressContainer = document.getElementById('progress-container');
+      const progressText = document.getElementById('progress-text');
+      if (progressContainer && progressText) {
+        progressContainer.classList.remove('hidden');
+        progressText.textContent = 'Scanning components (this may take a while)...';
+      }
+
+      // Show system results
+      systemResults.classList.remove('hidden');
+
+      // Show loading state in system audit content
+      systemAuditContent.innerHTML = `
+        <div class="skeleton"></div>
+        <div class="skeleton" style="width: 80%;"></div>
+        <div class="skeleton" style="width: 60%;"></div>
+      `;
+
+      sendMessageToPlugin('analyze-components', {});
     }
 
     // Handle Batch Mode Toggle
@@ -3470,6 +3503,12 @@
           break;
         case 'system-audit-result':
           handleSystemAuditResult(data);
+          break;
+        case 'variables-styles-audit-result':
+          handleVariablesStylesAuditResult(data);
+          break;
+        case 'components-audit-result':
+          handleComponentsAuditResult(data);
           break;
         case 'audit-progress':
           handleAuditProgress(data);
@@ -3810,6 +3849,363 @@
 
       if (!html) {
         html = '<div style="color: var(--text-secondary); font-size: 12px; padding: 8px;">No system-level checks available. Make sure you have variable collections set up.</div>';
+      }
+
+      systemAuditContent.innerHTML = html;
+    }
+
+    // Handle Variables & Styles Audit Result
+    function handleVariablesStylesAuditResult(data) {
+      // Hide progress indicator when results arrive
+      const progressContainer = document.getElementById('progress-container');
+      if (progressContainer) {
+        progressContainer.classList.add('hidden');
+      }
+      console.log('UI received Variables & Styles audit result:', data);
+      
+      if (data.error) {
+        updateStatus(`Variables & Styles audit failed: ${data.error}`, 'error');
+        systemAuditContent.innerHTML = `<div style="color: var(--error); padding: 8px;">Error: ${data.error}</div>`;
+        return;
+      }
+
+      updateStatus('Variables & Styles audit complete!', 'success');
+      
+      let html = '';
+      
+      // Score Display
+      if (data.scores && data.scores.overall) {
+        const score = data.scores.overall.score;
+        const { passed, warnings, failed, total } = data.scores.overall;
+        
+        // Determine score color
+        let scoreColor = '#22c55e'; // green
+        let scoreLabel = 'Excellent';
+        if (score < 50) {
+          scoreColor = '#ef4444'; // red
+          scoreLabel = 'Needs Work';
+        } else if (score < 75) {
+          scoreColor = '#f59e0b'; // amber
+          scoreLabel = 'Fair';
+        } else if (score < 90) {
+          scoreColor = '#22c55e'; // green
+          scoreLabel = 'Good';
+        }
+        
+        html += `
+          <div class="score-card" style="
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            margin-bottom: 24px;
+          ">
+            <!-- Score Circle -->
+            <div style="position: relative; width: 120px; height: 120px; flex-shrink: 0;">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="#e5e7eb" stroke-width="10"/>
+                <circle cx="60" cy="60" r="52" fill="none" stroke="${scoreColor}" stroke-width="10"
+                  stroke-linecap="round"
+                  stroke-dasharray="${2 * Math.PI * 52}"
+                  stroke-dashoffset="${2 * Math.PI * 52 - (score / 100) * 2 * Math.PI * 52}"
+                  transform="rotate(-90 60 60)"
+                  style="transition: stroke-dashoffset 0.5s ease;"
+                />
+              </svg>
+              <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+              ">
+                <div style="font-size: 32px; font-weight: 700; line-height: 1; color: ${scoreColor};">${score}</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">/ 100</div>
+              </div>
+            </div>
+
+            <!-- Score Details -->
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: ${scoreColor};">${scoreLabel}</div>
+
+              <!-- Stats Grid -->
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: #22c55e; font-size: 16px;">${ICO.checkCircle}</span>
+                  <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                    <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${passed}</span>
+                    <span style="font-size: 10px; color: var(--text-secondary);">passed</span>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: #f59e0b; font-size: 16px;">${ICO.warnTriangle}</span>
+                  <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                    <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${warnings}</span>
+                    <span style="font-size: 10px; color: var(--text-secondary);">warnings</span>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: #ef4444; font-size: 16px;">${ICO.xCircle}</span>
+                  <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                    <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${failed}</span>
+                    <span style="font-size: 10px; color: var(--text-secondary);">failed</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="font-size: 11px; color: var(--text-tertiary);">${total} checks total</div>
+            </div>
+          </div>
+        `;
+      }
+      
+      // Variable Collection Structure
+      if (data.collectionStructure && data.collectionStructure.length > 0) {
+        html += '<div class="audit-section">';
+        html += `
+          <div class="section-header">
+            <h4 class="section-title">Variable Collections</h4>
+            <div class="tooltip">
+              <div class="info-icon">i</div>
+              <span class="tooltiptext">
+                <strong>Variable Collection Structure</strong><br>
+                Validates that your Figma variable collections follow design system best practices.
+              </span>
+            </div>
+          </div>
+        `;
+
+        data.collectionStructure.forEach((item, index) => {
+          const status = item.status;
+          const hasLongSuggestion = item.suggestion && item.suggestion.length > 100;
+          const itemId = `coll-${index}`;
+
+          html += `
+            <div class="audit-item ${status === 'pass' ? 'pass-item' : status === 'warning' ? 'warning-item' : 'fail-item'}" style="flex-direction: column; align-items: flex-start;">
+              <div style="display: flex; align-items: center; width: 100%; cursor: ${hasLongSuggestion ? 'pointer' : 'default'};" ${hasLongSuggestion ? `onclick="toggleAuditDetail('${itemId}')"` : ''}>
+                <span class="audit-status ${status}">${
+                  status === 'pass' ? ICO.checkCircle : status === 'warning' ? ICO.warnTriangle : ICO.xCircle
+                }</span>
+                <span class="audit-label" style="flex: 1;">${item.check}</span>
+                ${hasLongSuggestion ? `<span class="collapsible-icon" id="icon-${itemId}" style="font-size: 10px; margin-left: 8px;">▼</span>` : ''}
+              </div>
+              ${item.suggestion && hasLongSuggestion ? `
+                <div id="${itemId}" class="audit-detail" style="display: none; margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); width: 100%; box-sizing: border-box; white-space: pre-line;">
+                  ${item.suggestion}
+                </div>
+              ` : item.suggestion && !hasLongSuggestion ? `
+                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary); white-space: pre-line;">${item.suggestion}</div>
+              ` : ''}
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      // Text Styles
+      if (data.textStyleSync && data.textStyleSync.length > 0) {
+        html += '<div class="audit-section">';
+        html += `
+          <div class="section-header">
+            <h4 class="section-title">Text Styles</h4>
+            <div class="tooltip">
+              <div class="info-icon">i</div>
+              <span class="tooltiptext">
+                <strong>Text Style & Variable Sync</strong><br>
+                Validates that font-family variables have matching text styles, and vice versa.
+              </span>
+            </div>
+          </div>
+        `;
+
+        data.textStyleSync.forEach((item, index) => {
+          const status = item.status;
+          const hasLongSuggestion = item.suggestion && item.suggestion.length > 100;
+          const itemId = `text-${index}`;
+
+          html += `
+            <div class="audit-item ${status === 'pass' ? 'pass-item' : status === 'warning' ? 'warning-item' : 'fail-item'}" style="flex-direction: column; align-items: flex-start;">
+              <div style="display: flex; align-items: center; width: 100%; cursor: ${hasLongSuggestion ? 'pointer' : 'default'};" ${hasLongSuggestion ? `onclick="toggleAuditDetail('${itemId}')"` : ''}>
+                <span class="audit-status ${status}">${
+                  status === 'pass' ? ICO.checkCircle : status === 'warning' ? ICO.warnTriangle : ICO.xCircle
+                }</span>
+                <span class="audit-label" style="flex: 1;">${item.check}</span>
+                ${hasLongSuggestion ? `<span class="collapsible-icon" id="icon-${itemId}" style="font-size: 10px; margin-left: 8px;">▼</span>` : ''}
+              </div>
+              ${item.suggestion && hasLongSuggestion ? `
+                <div id="${itemId}" class="audit-detail" style="display: none; margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); width: 100%; box-sizing: border-box; white-space: pre-line;">
+                  ${item.suggestion}
+                </div>
+              ` : item.suggestion && !hasLongSuggestion ? `
+                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary); white-space: pre-line;">${item.suggestion}</div>
+              ` : ''}
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      if (!html) {
+        html = '<div style="color: var(--text-secondary); font-size: 12px; padding: 8px;">No checks available. Make sure you have variable collections set up.</div>';
+      }
+
+      systemAuditContent.innerHTML = html;
+    }
+
+    // Handle Components Audit Result
+    function handleComponentsAuditResult(data) {
+      // Hide progress indicator when results arrive
+      const progressContainer = document.getElementById('progress-container');
+      if (progressContainer) {
+        progressContainer.classList.add('hidden');
+      }
+      console.log('UI received Components audit result:', data);
+      
+      if (data.error) {
+        updateStatus(`Components audit failed: ${data.error}`, 'error');
+        systemAuditContent.innerHTML = `<div style="color: var(--error); padding: 8px;">Error: ${data.error}</div>`;
+        return;
+      }
+
+      updateStatus('Components audit complete!', 'success');
+      
+      let html = '';
+      
+      // Score Display
+      if (data.scores && data.scores.component) {
+        const score = data.scores.component.score;
+        const { passed, warnings, failed, total } = data.scores.component;
+        
+        // Determine score color
+        let scoreColor = '#22c55e'; // green
+        let scoreLabel = 'Excellent';
+        if (score < 50) {
+          scoreColor = '#ef4444'; // red
+          scoreLabel = 'Needs Work';
+        } else if (score < 75) {
+          scoreColor = '#f59e0b'; // amber
+          scoreLabel = 'Fair';
+        } else if (score < 90) {
+          scoreColor = '#22c55e'; // green
+          scoreLabel = 'Good';
+        }
+        
+        html += `
+          <div class="score-card" style="
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            margin-bottom: 24px;
+          ">
+            <!-- Score Circle -->
+            <div style="position: relative; width: 120px; height: 120px; flex-shrink: 0;">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="#e5e7eb" stroke-width="10"/>
+                <circle cx="60" cy="60" r="52" fill="none" stroke="${scoreColor}" stroke-width="10"
+                  stroke-linecap="round"
+                  stroke-dasharray="${2 * Math.PI * 52}"
+                  stroke-dashoffset="${2 * Math.PI * 52 - (score / 100) * 2 * Math.PI * 52}"
+                  transform="rotate(-90 60 60)"
+                  style="transition: stroke-dashoffset 0.5s ease;"
+                />
+              </svg>
+              <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+              ">
+                <div style="font-size: 32px; font-weight: 700; line-height: 1; color: ${scoreColor};">${score}</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">/ 100</div>
+              </div>
+            </div>
+
+            <!-- Score Details -->
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: ${scoreColor};">${scoreLabel}</div>
+
+              <!-- Stats Grid -->
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: #22c55e; font-size: 16px;">${ICO.checkCircle}</span>
+                  <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                    <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${passed}</span>
+                    <span style="font-size: 10px; color: var(--text-secondary);">passed</span>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: #f59e0b; font-size: 16px;">${ICO.warnTriangle}</span>
+                  <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                    <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${warnings}</span>
+                    <span style="font-size: 10px; color: var(--text-secondary);">warnings</span>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: #ef4444; font-size: 16px;">${ICO.xCircle}</span>
+                  <div style="display: flex; flex-direction: column; line-height: 1.2;">
+                    <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${failed}</span>
+                    <span style="font-size: 10px; color: var(--text-secondary);">failed</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="font-size: 11px; color: var(--text-tertiary);">${total} checks total</div>
+            </div>
+          </div>
+        `;
+      }
+      
+      // Component Variables
+      if (data.componentBindings && data.componentBindings.length > 0) {
+        html += '<div class="audit-section">';
+        html += `
+          <div class="section-header">
+            <h4 class="section-title">Component Variables</h4>
+            <div class="tooltip">
+              <div class="info-icon">i</div>
+              <span class="tooltiptext">
+                <strong>Component Variable Bindings</strong><br>
+                Validates that components use theme variables instead of raw/hard-coded values.
+              </span>
+            </div>
+          </div>
+        `;
+
+        data.componentBindings.forEach((item, index) => {
+          const status = item.status;
+          const hasLongSuggestion = item.suggestion && item.suggestion.length > 100;
+          const itemId = `comp-${index}`;
+
+          html += `
+            <div class="audit-item ${status === 'pass' ? 'pass-item' : status === 'warning' ? 'warning-item' : 'fail-item'}" style="flex-direction: column; align-items: flex-start;">
+              <div style="display: flex; align-items: center; width: 100%; cursor: ${hasLongSuggestion ? 'pointer' : 'default'};" ${hasLongSuggestion ? `onclick="toggleAuditDetail('${itemId}')"` : ''}>
+                <span class="audit-status ${status}">${
+                  status === 'pass' ? ICO.checkCircle : status === 'warning' ? ICO.warnTriangle : ICO.xCircle
+                }</span>
+                <span class="audit-label" style="flex: 1;">${item.check}</span>
+                ${hasLongSuggestion ? `<span class="collapsible-icon" id="icon-${itemId}" style="font-size: 10px; margin-left: 8px;">▼</span>` : ''}
+              </div>
+              ${item.suggestion && hasLongSuggestion ? `
+                <div id="${itemId}" class="audit-detail" style="display: none; margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 11px; line-height: 1.5; color: var(--text-secondary); width: 100%; box-sizing: border-box; white-space: pre-line;">
+                  ${item.suggestion}
+                </div>
+              ` : item.suggestion && !hasLongSuggestion ? `
+                <div style="margin-top: 4px; font-size: 11px; color: var(--text-secondary); white-space: pre-line;">${item.suggestion}</div>
+              ` : ''}
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      if (!html) {
+        html = '<div style="color: var(--text-secondary); font-size: 12px; padding: 8px;">No component checks available. Make sure you have components in your file.</div>';
       }
 
       systemAuditContent.innerHTML = html;

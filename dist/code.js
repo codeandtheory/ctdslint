@@ -1078,6 +1078,12 @@ To fix: Select each component in Figma, then bind the listed properties to their
         case "analyze-system":
           await handleSystemAudit();
           break;
+        case "analyze-variables-styles":
+          await handleVariablesStylesAudit();
+          break;
+        case "analyze-components":
+          await handleComponentsAudit();
+          break;
         default:
           console.warn("Unknown message type:", type);
       }
@@ -1125,6 +1131,61 @@ To fix: Select each component in Figma, then bind the listed properties to their
       console.error("\u274C CTDS audit error:", error);
       sendMessageToUI("system-audit-result", {
         error: error instanceof Error ? error.message : "Unknown error during system audit"
+      });
+    }
+  }
+  async function handleVariablesStylesAudit() {
+    try {
+      console.log("\u{1F50D} Running Variables & Styles audit...");
+      const [collectionValidation, textStyleSync, textStyleBindings] = await Promise.all([
+        validateCollectionStructure(),
+        validateTextStylesAgainstVariables(),
+        validateTextStyleBindings()
+      ]);
+      const combinedTextStyleSync = [
+        ...textStyleSync.auditChecks,
+        ...textStyleBindings.auditChecks
+      ];
+      const allChecks = [
+        ...collectionValidation.auditChecks,
+        ...combinedTextStyleSync
+      ];
+      const overallStats = calculateAuditStats(allChecks);
+      const collectionStats = calculateAuditStats(collectionValidation.auditChecks);
+      const textStyleStats = calculateAuditStats(combinedTextStyleSync);
+      sendMessageToUI("variables-styles-audit-result", {
+        collectionStructure: collectionValidation.auditChecks,
+        textStyleSync: combinedTextStyleSync,
+        scores: {
+          overall: overallStats,
+          collection: collectionStats,
+          textStyle: textStyleStats
+        }
+      });
+      console.log("\u2705 Variables & Styles audit complete");
+    } catch (error) {
+      console.error("\u274C Variables & Styles audit error:", error);
+      sendMessageToUI("variables-styles-audit-result", {
+        error: error instanceof Error ? error.message : "Unknown error during Variables & Styles audit"
+      });
+    }
+  }
+  async function handleComponentsAudit() {
+    try {
+      console.log("\u{1F50D} Running Components audit...");
+      const componentBindings = await validateAllComponentBindings();
+      const componentStats = calculateAuditStats(componentBindings.auditChecks);
+      sendMessageToUI("components-audit-result", {
+        componentBindings: componentBindings.auditChecks,
+        scores: {
+          component: componentStats
+        }
+      });
+      console.log("\u2705 Components audit complete");
+    } catch (error) {
+      console.error("\u274C Components audit error:", error);
+      sendMessageToUI("components-audit-result", {
+        error: error instanceof Error ? error.message : "Unknown error during Components audit"
       });
     }
   }
