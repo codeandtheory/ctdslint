@@ -257,6 +257,19 @@ function adaptNode(node: FigmaNode): LintNode {
   if (node.paddingBottom !== undefined) result.paddingBottom = node.paddingBottom;
   if (node.paddingLeft !== undefined) result.paddingLeft = node.paddingLeft;
   if (node.itemSpacing !== undefined) result.itemSpacing = node.itemSpacing;
+  if (node.layoutSizingHorizontal) result.layoutSizingHorizontal = node.layoutSizingHorizontal;
+  if (node.layoutSizingVertical) result.layoutSizingVertical = node.layoutSizingVertical;
+
+  // Component properties
+  if (node.componentPropertyDefinitions) {
+    result.componentPropertyDefinitions = node.componentPropertyDefinitions;
+  }
+
+  // Visual properties for complexity analysis
+  if (node.opacity !== undefined) result.opacity = node.opacity;
+  if (node.blendMode) result.blendMode = node.blendMode;
+  if (node.constraints) result.constraints = node.constraints;
+  if (node.strokeWeight !== undefined) result.strokeWeight = node.strokeWeight;
 
   // Typography (TEXT nodes)
   if (node.type === 'TEXT' && node.style) {
@@ -279,6 +292,18 @@ function adaptNode(node: FigmaNode): LintNode {
   }
 
   return result;
+}
+
+// ============================================================================
+// Public: Standalone node adapter (for single-node fetches)
+// ============================================================================
+
+/**
+ * Adapt a single `FigmaNode` (e.g. from `getNodes()`) into a `LintNode`.
+ * Useful when you only fetched a specific node rather than the full file.
+ */
+export function adaptNodeStandalone(node: FigmaNode): LintNode {
+  return adaptNode(node);
 }
 
 // ============================================================================

@@ -49,12 +49,31 @@ export interface FigmaNode {
   paddingBottom?: number;
   paddingLeft?: number;
   itemSpacing?: number;
+  layoutSizingHorizontal?: string;
+  layoutSizingVertical?: string;
 
   // Typography (TEXT nodes)
   style?: FigmaTypeStyle;
 
   // Variable bindings
   boundVariables?: Record<string, FigmaRestBoundVariable | FigmaRestBoundVariable[]>;
+
+  // Component properties (COMPONENT_SET / COMPONENT nodes)
+  componentPropertyDefinitions?: Record<
+    string,
+    {
+      type: string; // VARIANT, BOOLEAN, INSTANCE_SWAP, TEXT
+      defaultValue: unknown;
+      variantOptions?: string[];
+    }
+  >;
+
+  // Visual properties for complexity analysis
+  opacity?: number;
+  blendMode?: string;
+  constraints?: { horizontal: string; vertical: string };
+  absoluteBoundingBox?: { x: number; y: number; width: number; height: number };
+  strokeWeight?: number;
 }
 
 export interface FigmaRestPaint {

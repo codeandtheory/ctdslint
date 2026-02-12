@@ -143,11 +143,29 @@ export interface LintNode {
   paddingBottom?: number;
   paddingLeft?: number;
   itemSpacing?: number;
+  layoutSizingHorizontal?: string;
+  layoutSizingVertical?: string;
 
   // Typography (TEXT nodes only)
   fontSize?: number | 'MIXED';
   lineHeight?: LintLineHeight | 'MIXED';
   letterSpacing?: LintLetterSpacing | 'MIXED';
+
+  // Component properties (COMPONENT_SET / COMPONENT nodes)
+  componentPropertyDefinitions?: Record<
+    string,
+    {
+      type: string; // VARIANT, BOOLEAN, INSTANCE_SWAP, TEXT
+      defaultValue: unknown;
+      variantOptions?: string[];
+    }
+  >;
+
+  // Visual properties for complexity analysis
+  opacity?: number;
+  blendMode?: string;
+  constraints?: { horizontal: string; vertical: string };
+  strokeWeight?: number;
 
   /** Recursive children */
   children?: LintNode[];
@@ -175,4 +193,53 @@ export interface LintData {
   textStyles: LintTextStyle[];
   /** Top-level pages, each containing a tree of nodes */
   pages: Array<{ name: string; children: LintNode[] }>;
+}
+
+// ============================================================================
+// Complexity Analysis Types
+// ============================================================================
+
+/** Structural metrics for a component tree. */
+export interface StructuralMetrics {
+  nodeCount: number;
+  maxDepth: number;
+  leafCount: number;
+  maxFanOut: number;
+  uniqueTypes: number;
+  typeDistribution: Record<string, number>;
+}
+
+/** Cyclomatic complexity breakdown for a component. */
+export interface CyclomaticBreakdown {
+  variants: number;
+  booleanProps: number;
+  instanceSwaps: number;
+  textProps: number;
+}
+
+export interface CyclomaticMetrics {
+  score: number;
+  breakdown: CyclomaticBreakdown;
+}
+
+/** Halstead complexity metrics for a component. */
+export interface HalsteadMetrics {
+  vocabulary: number;
+  length: number;
+  volume: number;
+  difficulty: number;
+  effort: number;
+  operators: { unique: number; total: number };
+  operands: { unique: number; total: number };
+}
+
+/** Full complexity result for a single component. */
+export interface ComponentComplexityResult {
+  componentName: string;
+  nodeId: string;
+  figmaUrl?: string;
+  structural: StructuralMetrics;
+  cyclomatic: CyclomaticMetrics;
+  halstead: HalsteadMetrics;
+  composite: number; // 0–100 weighted score
 }

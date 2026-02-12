@@ -56,6 +56,12 @@ settings.local.json
 # Development UI files
 # ui-enhanced.html is now our main UI file, not a dev file
 
+# Generated reports
+*.report.html
+*.report.json
+complexity.html
+complexity.json
+
 # Personal/Internal documentation
 MCP_INTEGRATION_SUCCESS.md
 IMPORT_TO_FIGMA.md
