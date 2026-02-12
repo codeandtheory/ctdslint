@@ -590,53 +590,57 @@
       const bindingIssues = stylesWithIssues.filter((s) => s.incorrectBindings.length > 0);
       if (unboundIssues.length > 0) {
         const issueDescriptions = unboundIssues.map((s) => {
+          const style = results.find((r) => r.styleName === s.styleName);
+          if (!style) return `\u2022 "${s.styleName}": ${s.unboundProps.join(", ")}`;
+          const category = style.category;
+          const size = style.size;
           const propsDetail = s.unboundProps.map((prop) => {
-            const style = results.find((r) => r.styleName === s.styleName);
-            if (style) {
-              const category = style.category;
-              const size = style.size;
-              switch (prop) {
-                case "fontFamily":
-                  return `${prop} \u2192 font-family/${category}`;
-                case "fontSize":
-                  return `${prop} \u2192 font-size/${category}/${size}`;
-                case "lineHeight":
-                  return `${prop} \u2192 line-height/${category}/${size}`;
-                case "letterSpacing":
-                  return `${prop} \u2192 letter-spacing/${category}/${size}`;
-                default:
-                  return prop;
-              }
+            switch (prop) {
+              case "fontFamily":
+                return `  - ${prop} has a hard-coded value. Connect it to "font-family/${category}" variable`;
+              case "fontSize":
+                return `  - ${prop} has a hard-coded value. Connect it to "font-size/${category}/${size}" variable`;
+              case "lineHeight":
+                return `  - ${prop} has a hard-coded value. Connect it to "line-height/${category}/${size}" variable`;
+              case "letterSpacing":
+                return `  - ${prop} has a hard-coded value. Connect it to "letter-spacing/${category}/${size}" variable`;
+              default:
+                return `  - ${prop} has a hard-coded value`;
             }
-            return prop;
           });
-          return `\u2022 "${s.styleName}": ${propsDetail.join(", ")}`;
+          return `\u2022 Text style "${s.styleName}" (category: ${category}, size: ${size}):
+${propsDetail.join("\n")}`;
         });
         auditChecks.push({
           check: "Text style variable bindings",
           status: "warning",
-          suggestion: `${unboundIssues.length} text style(s) have raw values instead of theme variables:
+          suggestion: `${unboundIssues.length} text style(s) have hard-coded values instead of using theme variables:
 
-${issueDescriptions.join("\n")}
+${issueDescriptions.join("\n\n")}
 
-Bind each typography property to its corresponding variable.`
+To fix: Select each text style in Figma, then connect the listed properties to their corresponding variables using the variable binding feature.`
         });
       }
       if (bindingIssues.length > 0) {
         const issueDescriptions = bindingIssues.map((s) => {
-          const examples = s.incorrectBindings.map(
-            (b) => `${b.prop}: "${b.actual}" \u2192 "${b.expected}"`
-          );
-          return `\u2022 "${s.styleName}": ${examples.join(", ")}`;
+          const nameParts = s.styleName.split("/");
+          const category = nameParts[0];
+          const size = nameParts.length >= 3 ? nameParts[1] : nameParts[nameParts.length - 1];
+          const examples = s.incorrectBindings.map((b) => {
+            const propType = b.prop;
+            return `  - ${propType} is bound to "${b.actual}" but should contain "/${size}" to match this text style's size`;
+          });
+          return `\u2022 Text style "${s.styleName}" (category: ${category}, size: ${size}):
+${examples.join("\n")}`;
         });
         auditChecks.push({
           check: "Text style variable naming",
           status: "warning",
-          suggestion: `${bindingIssues.length} text style(s) use incorrectly named variables:
+          suggestion: `${bindingIssues.length} text style(s) are connected to variables with mismatched size values:
 
-${issueDescriptions.join("\n")}
+${issueDescriptions.join("\n\n")}
 
-Update variable names to match the expected pattern.`
+Each text style should be bound to variables that match its size. For example, "heading/sm/light" should use "letter-spacing/heading/sm", not "letter-spacing/heading/md".`
         });
       }
       if (unboundIssues.length === 0 && bindingIssues.length === 0 && totalStyles > 0) {
