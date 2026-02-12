@@ -3369,9 +3369,17 @@
     function handleAnalyzeSystem() {
       updateStatus('Running CTDS audit...', 'info');
 
+      // Show progress indicator
+      const progressContainer = document.getElementById('progress-container');
+      const progressText = document.getElementById('progress-text');
+      if (progressContainer && progressText) {
+        progressContainer.classList.remove('hidden');
+        progressText.textContent = 'Initializing audit...';
+      }
+
       // Show system results
       systemResults.classList.remove('hidden');
-      
+
       // Show loading state in system audit content
       systemAuditContent.innerHTML = `
         <div class="skeleton"></div>
