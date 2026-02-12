@@ -1559,66 +1559,56 @@ export async function validateAllComponentBindings(): Promise<{
       data: { message: `Completed scanning ${totalComponents} component${totalComponents !== 1 ? 's' : ''}!` }
     });
 
-    // Generate audit checks
+    // Generate audit checks - one per component (pass/fail only)
     const totalValidated = results.length;
     const compliantComponents = results.filter(r => r.isFullyBound).length;
     
-    if (componentsWithIssues.length > 0) {
-      // Aggregate counts across all components
-      const totalCounts: Record<ComponentPropertyCategory, number> = {
-        fill: 0,
-        stroke: 0,
-        effect: 0,
-        spacing: 0,
-        cornerRadius: 0,
-        typography: 0
-      };
+    // Create one audit check per component with page information
+    for (const component of components) {
+      const result = results.find(r => r.componentName === component.node.name);
+      if (!result) continue;
 
-      for (const comp of componentsWithIssues) {
-        for (const cat of Object.keys(comp.counts) as ComponentPropertyCategory[]) {
-          totalCounts[cat] += comp.counts[cat];
+      if (result.isFullyBound) {
+        // Component passes - fully bound to variables
+        auditChecks.push({
+          check: `${result.componentName}`,
+          status: 'pass',
+          suggestion: `Component uses theme variables for all visual properties`,
+          pageName: component.pageName
+        });
+      } else {
+        // Component fails - has hard-coded values
+        const comp = componentsWithIssues.find(c => c.name === result.componentName);
+        if (comp) {
+          const issues: string[] = [];
+
+          if (comp.counts.fill > 0) {
+            issues.push(`- ${comp.counts.fill} fill color${comp.counts.fill > 1 ? 's' : ''} (should use color/* variables)`);
+          }
+          if (comp.counts.stroke > 0) {
+            issues.push(`- ${comp.counts.stroke} stroke color${comp.counts.stroke > 1 ? 's' : ''} (should use color/* variables)`);
+          }
+          if (comp.counts.spacing > 0) {
+            issues.push(`- ${comp.counts.spacing} spacing value${comp.counts.spacing > 1 ? 's' : ''} (should use space/* variables for padding/gap)`);
+          }
+          if (comp.counts.cornerRadius > 0) {
+            issues.push(`- ${comp.counts.cornerRadius} corner radi${comp.counts.cornerRadius > 1 ? 'i' : 'us'} (should use radius/* variables)`);
+          }
+          if (comp.counts.typography > 0) {
+            issues.push(`- ${comp.counts.typography} typography value${comp.counts.typography > 1 ? 's' : ''} (should use font-* variables)`);
+          }
+          if (comp.counts.effect > 0) {
+            issues.push(`- ${comp.counts.effect} effect${comp.counts.effect > 1 ? 's' : ''} (should use effect/* variables)`);
+          }
+
+          auditChecks.push({
+            check: `${result.componentName}`,
+            status: 'fail',
+            suggestion: `${comp.totalRawValues} hard-coded value${comp.totalRawValues > 1 ? 's' : ''}:\n${issues.join('\n')}\n\nTo fix: Select this component in Figma, then bind the listed properties to their corresponding variables in your Theme collection.`,
+            pageName: component.pageName
+          });
         }
       }
-
-      // Create detailed component descriptions with page information
-      const componentDescriptions = componentsWithIssues.map(comp => {
-        const issues: string[] = [];
-
-        if (comp.counts.fill > 0) {
-          issues.push(`  - ${comp.counts.fill} fill color${comp.counts.fill > 1 ? 's' : ''} (should use color/* variables)`);
-        }
-        if (comp.counts.stroke > 0) {
-          issues.push(`  - ${comp.counts.stroke} stroke color${comp.counts.stroke > 1 ? 's' : ''} (should use color/* variables)`);
-        }
-        if (comp.counts.spacing > 0) {
-          issues.push(`  - ${comp.counts.spacing} spacing value${comp.counts.spacing > 1 ? 's' : ''} (should use space/* variables for padding/gap)`);
-        }
-        if (comp.counts.cornerRadius > 0) {
-          issues.push(`  - ${comp.counts.cornerRadius} corner radi${comp.counts.cornerRadius > 1 ? 'i' : 'us'} (should use radius/* variables)`);
-        }
-        if (comp.counts.typography > 0) {
-          issues.push(`  - ${comp.counts.typography} typography value${comp.counts.typography > 1 ? 's' : ''} (should use font-* variables)`);
-        }
-        if (comp.counts.effect > 0) {
-          issues.push(`  - ${comp.counts.effect} effect${comp.counts.effect > 1 ? 's' : ''} (should use effect/* variables)`);
-        }
-
-        return `• Component "${comp.name}" on page "${comp.pageName}" has ${comp.totalRawValues} hard-coded value${comp.totalRawValues > 1 ? 's' : ''}:\n${issues.join('\n')}`;
-      });
-
-      auditChecks.push({
-        check: 'Component variable bindings',
-        status: 'warning',
-        suggestion: `${componentsWithIssues.length} component(s) have hard-coded values instead of using theme variables:\n\n${componentDescriptions.join('\n\n')}\n\nTo fix: Select each component in Figma, then bind the listed properties to their corresponding variables in your Theme collection. This ensures consistent styling and makes design updates easier.`
-      });
-    }
-    
-    if (compliantComponents === totalValidated && totalValidated > 0) {
-      auditChecks.push({
-        check: 'Component variable bindings',
-        status: 'pass',
-        suggestion: `All ${totalValidated} components use theme variables for visual properties`
-      });
     }
 
     console.log('🧩 [COMPONENT BINDING] Validation complete:', {

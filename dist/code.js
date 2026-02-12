@@ -996,59 +996,49 @@ Each text style should be bound to variables that match its size. For example, "
       });
       const totalValidated = results.length;
       const compliantComponents = results.filter((r) => r.isFullyBound).length;
-      if (componentsWithIssues.length > 0) {
-        const totalCounts = {
-          fill: 0,
-          stroke: 0,
-          effect: 0,
-          spacing: 0,
-          cornerRadius: 0,
-          typography: 0
-        };
-        for (const comp of componentsWithIssues) {
-          for (const cat of Object.keys(comp.counts)) {
-            totalCounts[cat] += comp.counts[cat];
+      for (const component of components) {
+        const result = results.find((r) => r.componentName === component.node.name);
+        if (!result) continue;
+        if (result.isFullyBound) {
+          auditChecks.push({
+            check: `${result.componentName}`,
+            status: "pass",
+            suggestion: `Component uses theme variables for all visual properties`,
+            pageName: component.pageName
+          });
+        } else {
+          const comp = componentsWithIssues.find((c) => c.name === result.componentName);
+          if (comp) {
+            const issues = [];
+            if (comp.counts.fill > 0) {
+              issues.push(`- ${comp.counts.fill} fill color${comp.counts.fill > 1 ? "s" : ""} (should use color/* variables)`);
+            }
+            if (comp.counts.stroke > 0) {
+              issues.push(`- ${comp.counts.stroke} stroke color${comp.counts.stroke > 1 ? "s" : ""} (should use color/* variables)`);
+            }
+            if (comp.counts.spacing > 0) {
+              issues.push(`- ${comp.counts.spacing} spacing value${comp.counts.spacing > 1 ? "s" : ""} (should use space/* variables for padding/gap)`);
+            }
+            if (comp.counts.cornerRadius > 0) {
+              issues.push(`- ${comp.counts.cornerRadius} corner radi${comp.counts.cornerRadius > 1 ? "i" : "us"} (should use radius/* variables)`);
+            }
+            if (comp.counts.typography > 0) {
+              issues.push(`- ${comp.counts.typography} typography value${comp.counts.typography > 1 ? "s" : ""} (should use font-* variables)`);
+            }
+            if (comp.counts.effect > 0) {
+              issues.push(`- ${comp.counts.effect} effect${comp.counts.effect > 1 ? "s" : ""} (should use effect/* variables)`);
+            }
+            auditChecks.push({
+              check: `${result.componentName}`,
+              status: "fail",
+              suggestion: `${comp.totalRawValues} hard-coded value${comp.totalRawValues > 1 ? "s" : ""}:
+${issues.join("\n")}
+
+To fix: Select this component in Figma, then bind the listed properties to their corresponding variables in your Theme collection.`,
+              pageName: component.pageName
+            });
           }
         }
-        const componentDescriptions = componentsWithIssues.map((comp) => {
-          const issues = [];
-          if (comp.counts.fill > 0) {
-            issues.push(`  - ${comp.counts.fill} fill color${comp.counts.fill > 1 ? "s" : ""} (should use color/* variables)`);
-          }
-          if (comp.counts.stroke > 0) {
-            issues.push(`  - ${comp.counts.stroke} stroke color${comp.counts.stroke > 1 ? "s" : ""} (should use color/* variables)`);
-          }
-          if (comp.counts.spacing > 0) {
-            issues.push(`  - ${comp.counts.spacing} spacing value${comp.counts.spacing > 1 ? "s" : ""} (should use space/* variables for padding/gap)`);
-          }
-          if (comp.counts.cornerRadius > 0) {
-            issues.push(`  - ${comp.counts.cornerRadius} corner radi${comp.counts.cornerRadius > 1 ? "i" : "us"} (should use radius/* variables)`);
-          }
-          if (comp.counts.typography > 0) {
-            issues.push(`  - ${comp.counts.typography} typography value${comp.counts.typography > 1 ? "s" : ""} (should use font-* variables)`);
-          }
-          if (comp.counts.effect > 0) {
-            issues.push(`  - ${comp.counts.effect} effect${comp.counts.effect > 1 ? "s" : ""} (should use effect/* variables)`);
-          }
-          return `\u2022 Component "${comp.name}" on page "${comp.pageName}" has ${comp.totalRawValues} hard-coded value${comp.totalRawValues > 1 ? "s" : ""}:
-${issues.join("\n")}`;
-        });
-        auditChecks.push({
-          check: "Component variable bindings",
-          status: "warning",
-          suggestion: `${componentsWithIssues.length} component(s) have hard-coded values instead of using theme variables:
-
-${componentDescriptions.join("\n\n")}
-
-To fix: Select each component in Figma, then bind the listed properties to their corresponding variables in your Theme collection. This ensures consistent styling and makes design updates easier.`
-        });
-      }
-      if (compliantComponents === totalValidated && totalValidated > 0) {
-        auditChecks.push({
-          check: "Component variable bindings",
-          status: "pass",
-          suggestion: `All ${totalValidated} components use theme variables for visual properties`
-        });
       }
       console.log("\u{1F9E9} [COMPONENT BINDING] Validation complete:", {
         total: totalValidated,
@@ -1114,7 +1104,7 @@ To fix: Select each component in Figma, then bind the listed properties to their
       const overallStats = calculateAuditStats(allChecks);
       const collectionStats = calculateAuditStats(collectionValidation.auditChecks);
       const textStyleStats = calculateAuditStats(combinedTextStyleSync);
-      const componentStats = calculateAuditStats(componentBindings.auditChecks);
+      const componentStats = calculateComponentStats(componentBindings.auditChecks);
       sendMessageToUI("system-audit-result", {
         collectionStructure: collectionValidation.auditChecks,
         textStyleSync: combinedTextStyleSync,
@@ -1174,7 +1164,7 @@ To fix: Select each component in Figma, then bind the listed properties to their
     try {
       console.log("\u{1F50D} Running Components audit...");
       const componentBindings = await validateAllComponentBindings();
-      const componentStats = calculateAuditStats(componentBindings.auditChecks);
+      const componentStats = calculateComponentStats(componentBindings.auditChecks);
       sendMessageToUI("components-audit-result", {
         componentBindings: componentBindings.auditChecks,
         scores: {
@@ -1199,6 +1189,16 @@ To fix: Select each component in Figma, then bind the listed properties to their
     const total = checks.length;
     const score = Math.round(passed / total * 100);
     return { score, passed, warnings, failed, total };
+  }
+  function calculateComponentStats(checks) {
+    if (checks.length === 0) {
+      return { score: 100, passed: 0, failed: 0, total: 0 };
+    }
+    const passed = checks.filter((c) => c.status === "pass").length;
+    const failed = checks.filter((c) => c.status === "fail").length;
+    const total = checks.length;
+    const score = Math.round(passed / total * 100);
+    return { score, passed, failed, total };
   }
   function initializePlugin() {
     console.log("\u{1F680} ctdsLint initialized (CT/DS Audit only)");

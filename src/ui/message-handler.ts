@@ -67,7 +67,7 @@ async function handleSystemAudit(): Promise<void> {
     const overallStats = calculateAuditStats(allChecks);
     const collectionStats = calculateAuditStats(collectionValidation.auditChecks);
     const textStyleStats = calculateAuditStats(combinedTextStyleSync);
-    const componentStats = calculateAuditStats(componentBindings.auditChecks);
+    const componentStats = calculateComponentStats(componentBindings.auditChecks);
 
     // Send results to UI
     sendMessageToUI('system-audit-result', {
@@ -151,8 +151,8 @@ async function handleComponentsAudit(): Promise<void> {
     // Run component bindings validation only
     const componentBindings = await validateAllComponentBindings();
 
-    // Calculate score
-    const componentStats = calculateAuditStats(componentBindings.auditChecks);
+    // Calculate score using component-specific stats (pass/fail only)
+    const componentStats = calculateComponentStats(componentBindings.auditChecks);
 
     // Send results to UI
     sendMessageToUI('components-audit-result', {
@@ -186,6 +186,22 @@ function calculateAuditStats(checks: any[]): { score: number; passed: number; wa
   const score = Math.round((passed / total) * 100);
 
   return { score, passed, warnings, failed, total };
+}
+
+/**
+ * Calculate component audit statistics (pass/fail only, no warnings)
+ */
+function calculateComponentStats(checks: any[]): { score: number; passed: number; failed: number; total: number } {
+  if (checks.length === 0) {
+    return { score: 100, passed: 0, failed: 0, total: 0 };
+  }
+
+  const passed = checks.filter(c => c.status === 'pass').length;
+  const failed = checks.filter(c => c.status === 'fail').length;
+  const total = checks.length;
+  const score = Math.round((passed / total) * 100);
+
+  return { score, passed, failed, total };
 }
 
 /**
