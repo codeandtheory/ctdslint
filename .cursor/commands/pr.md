@@ -42,6 +42,7 @@ The `/pr` command MUST output PR summaries using this EXACT template structure:
 
 **MANDATORY**: Every Shell tool call made during execution of this command **MUST** use `required_permissions: ["all"]`. The sandbox environment breaks TLS certificate verification for GitHub CLI and other network operations. Do NOT use `required_permissions: ["full_network"]` — always use `["all"]` to disable the sandbox entirely.
 
+
 ## Instructions
 
 When the user types `/pr`, `/pr [target-branch]`, `/pr [jira-tickets]`, `/pr [target-branch] [jira-tickets]`, `/pr --create`, or `/pr --analysis`:
